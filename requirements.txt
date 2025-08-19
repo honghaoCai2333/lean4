@@ -1,0 +1,5 @@
+litellm>=1.0.0
+pyyaml>=6.0
+click>=8.0.0
+colorama>=0.4.6
+pathlib>=1.0.1
