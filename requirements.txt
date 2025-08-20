@@ -3,3 +3,5 @@ pyyaml>=6.0
 click>=8.0.0
 colorama>=0.4.6
 pathlib>=1.0.1
+Flask>=3.0.0
+flask-cors>=4.0.0

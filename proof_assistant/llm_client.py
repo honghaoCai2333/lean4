@@ -26,80 +26,22 @@ class LLMClient:
         except FileNotFoundError:
             return {}
     
+    def _load_prompt(self, prompt_file: str) -> str:
+        """
+        从文件加载提示模板
+        """
+        try:
+            with open(prompt_file, 'r', encoding='utf-8') as f:
+                return f.read().strip()
+        except FileNotFoundError:
+            raise Exception(f"提示文件未找到: {prompt_file}")
+    
     def generate_lean_proof(self, proof_statement: str) -> str:
         """
         使用LLM生成Lean4证明代码
         """
-        prompt = f"""
-你是一个Lean4数学证明专家。请按以下步骤思考并生成证明：
-
-数学陈述: {proof_statement}
-
-第一步：分析证明类型
-- 如果是自然数性质(如n+0=n)，使用归纳法
-- 如果是逻辑命题(如¬¬P→P)，使用Classical.em或反证法
-- 如果是集合关系(如传递性)，使用函数组合
-- 如果是条件命题(如奇偶性)，使用分情况讨论
-
-第二步：选择正确的Lean4语法
-自然数归纳：
-```
-theorem name (n : Nat) : goal := by
-  induction n with
-  | zero => rfl  -- 或simp
-  | succ d ih => rw [定理名] -- 或simp [ih]
-```
-
-逻辑证明：
-```
-theorem name (P : Prop) : goal := by
-  by_cases h : P  -- 排中律
-  · -- P为真的情况
-  · -- P为假的情况
-```
-
-集合传递性：
-```
-theorem name (A B C : α → Prop) (h1 : ∀ x, A x → B x) (h2 : ∀ x, B x → C x) : 
-  ∀ x, A x → C x := fun x h => h2 x (h1 x h)
-```
-
-第三步：可用的策略
-- rfl: 当两边相等
-- simp: 自动化简
-- rw [定理]: 重写
-- intro: 引入假设
-- exact: 直接给出证明项
-- by_cases: 分情况讨论
-- contradiction: 从矛盾推出
-
-常见问题和解决方案：
-1. 不要使用import语句
-2. 不要使用byContradiction，用by_cases代替
-3. 不要使用Nat.Even、Prime、norm_num、dvd、linarith、decide、use、calc等高级概念，对于复杂的数论证明（如偶数性质），直接承认复杂性并使用sorry：
-   ```
-   theorem even_square_even (n : Nat) : (∃ k, n * n = 2 * k) → (∃ k, n = 2 * k) := by
-     intro h
-     -- 这个证明需要用到高级数论知识，超出了基础Lean4的范围
-     -- 完整证明需要：奇偶性分类、模运算、反证法等复杂工具
-     sorry
-   ```
-4. 对于n + n = 2n类型的证明，最简单的方式：
-   ```
-   theorem add_self_eq_two_mul (n : Nat) : n + n = 2 * n := by
-     simp [Nat.two_mul]
-   ```
-   或者手动展开证明：
-   ```
-   theorem add_self_eq_two_mul (n : Nat) : n + n = 2 * n := by
-     rw [Nat.two_mul]
-   ```
-5. 使用Nat而不是ℕ  
-6. 使用基本策略：rfl, simp, rw, by_cases, intro, exact, contradiction
-7. 复杂证明时可以使用sorry作为占位符，但要说明逻辑结构
-
-请直接生成Lean4代码，不要包含markdown标记：
-"""
+        prompt_template = self._load_prompt("prompts/generate_lean_proof.txt")
+        prompt = prompt_template.format(proof_statement=proof_statement)
         
         try:
             print(f"调用模型: {self.model}")
@@ -121,17 +63,8 @@ theorem name (A B C : α → Prop) (h1 : ∀ x, A x → B x) (h2 : ∀ x, B x �
         """
         根据错误信息改进证明
         """
-        prompt = f"""
-以下Lean4证明代码存在错误，请根据错误信息进行修正：
-
-原始证明:
-{original_proof}
-
-错误信息:
-{error_message}
-
-请修正错误并返回正确的Lean4代码：
-"""
+        prompt_template = self._load_prompt("prompts/refine_proof.txt")
+        prompt = prompt_template.format(original_proof=original_proof, error_message=error_message)
         
         try:
             print(f"调用模型: {self.model}")
@@ -153,13 +86,8 @@ theorem name (A B C : α → Prop) (h1 : ∀ x, A x → B x) (h2 : ∀ x, B x �
         """
         解释证明步骤
         """
-        prompt = f"""
-请解释以下Lean4证明代码的每个步骤：
-
-{proof_code}
-
-请用中文详细解释每个证明步骤的逻辑和数学原理：
-"""
+        prompt_template = self._load_prompt("prompts/explain_proof.txt")
+        prompt = prompt_template.format(proof_code=proof_code)
         
         try:
             response = completion(

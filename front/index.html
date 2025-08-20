@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lean4 数学证明助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 900px;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            color: #555;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            resize: vertical;
+            transition: border-color 0.3s;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .prove-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .prove-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .prove-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .clear-btn {
+            background: #f5f5f5;
+            color: #666;
+        }
+
+        .clear-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .output-section {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .output-title {
+            color: #555;
+            font-weight: 600;
+            font-size: 1.2em;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .status-processing {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .output-content {
+            background: #f9f9f9;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            min-height: 200px;
+            max-height: 500px;
+            overflow-y: auto;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0,0,0,.1);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .proof-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
+
+        .proof-section-title {
+            color: #667eea;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .example-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .example-btn {
+            padding: 8px 15px;
+            background: #f0f0f0;
+            color: #555;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .example-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .typing-effect {
+            animation: typing 0.5s ease-in-out;
+        }
+
+        @keyframes typing {
+            from { opacity: 0.3; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Lean4 数学证明助手</h1>
+        <p class="subtitle">基于AI的自动化数学定理证明系统</p>
+        
+        <div class="input-section">
+            <label for="statement">请输入需要证明的数学命题：</label>
+            <textarea id="statement" rows="4" placeholder="例如：证明对于所有自然数n，n + 0 = n"></textarea>
+            
+            <div class="example-buttons">
+                <button class="example-btn" onclick="setExample('对于所有自然数n，n + 0 = n')">自然数加零</button>
+                <button class="example-btn" onclick="setExample('对于所有实数x和y，(x + y)^2 = x^2 + 2*x*y + y^2')">完全平方公式</button>
+                <button class="example-btn" onclick="setExample('证明：如果a > b且b > c，则a > c')">传递性</button>
+                <button class="example-btn" onclick="setExample('证明勾股定理：在直角三角形中，a^2 + b^2 = c^2')">勾股定理</button>
+            </div>
+        </div>
+        
+        <div class="button-container">
+            <button class="prove-btn" onclick="startProof()">
+                <span id="proveButtonText">开始证明</span>
+            </button>
+            <button class="clear-btn" onclick="clearAll()">清空</button>
+        </div>
+        
+        <div class="output-section" id="outputSection">
+            <div class="output-header">
+                <span class="output-title">证明过程</span>
+                <div class="status-indicator" id="statusIndicator">
+                    <span class="spinner"></span>
+                    <span id="statusText">处理中...</span>
+                </div>
+            </div>
+            <div class="output-content" id="outputContent"></div>
+        </div>
+    </div>
+
+    <script>
+        let eventSource = null;
+        let currentContent = '';
+        let isProcessing = false;
+
+        function setExample(text) {
+            document.getElementById('statement').value = text;
+        }
+
+        function startProof() {
+            if (isProcessing) {
+                return;
+            }
+
+            const statement = document.getElementById('statement').value.trim();
+            
+            if (!statement) {
+                alert('请输入需要证明的数学命题');
+                return;
+            }
+
+            isProcessing = true;
+            currentContent = '';
+            
+            // 更新UI状态
+            document.getElementById('outputSection').style.display = 'block';
+            document.getElementById('outputContent').innerHTML = '';
+            document.getElementById('proveButtonText').textContent = '证明中...';
+            document.querySelector('.prove-btn').disabled = true;
+            
+            setStatus('processing', '连接服务器...');
+
+            // 关闭之前的连接
+            if (eventSource) {
+                eventSource.close();
+            }
+
+            // 创建EventSource连接
+            const url = 'http://localhost:5001/api/prove';
+            
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ statement: statement })
+            }).then(response => {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                
+                return readStream(reader, decoder);
+            }).catch(error => {
+                console.error('Error:', error);
+                setStatus('error', '连接失败');
+                appendOutput('\n错误: ' + error.message);
+                resetButton();
+            });
+        }
+
+        async function readStream(reader, decoder) {
+            let buffer = '';
+            
+            while (true) {
+                const { done, value } = await reader.read();
+                
+                if (done) {
+                    break;
+                }
+                
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop();
+                
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(line.slice(6));
+                            handleMessage(data);
+                        } catch (e) {
+                            console.error('Failed to parse:', line);
+                        }
+                    }
+                }
+            }
+            
+            if (buffer && buffer.startsWith('data: ')) {
+                try {
+                    const data = JSON.parse(buffer.slice(6));
+                    handleMessage(data);
+                } catch (e) {
+                    console.error('Failed to parse:', buffer);
+                }
+            }
+        }
+
+        function handleMessage(data) {
+            const { type, content } = data;
+            
+            switch(type) {
+                case 'status':
+                    setStatus('processing', content);
+                    appendOutput('\n' + content + '\n');
+                    break;
+                    
+                case 'proof_start':
+                    setStatus('processing', '生成证明代码...');
+                    appendOutput('\n' + content + '\n');
+                    break;
+                    
+                case 'proof_chunk':
+                    appendStreamContent(content);
+                    break;
+                    
+                case 'proof_end':
+                    appendOutput('\n');
+                    break;
+                    
+                case 'success':
+                    setStatus('success', '证明成功');
+                    appendOutput('\n' + content + '\n');
+                    break;
+                    
+                case 'error':
+                    setStatus('error', '证明失败');
+                    appendOutput('\n' + content + '\n');
+                    break;
+                    
+                case 'explanation_start':
+                    appendOutput('\n=== 证明解释 ===\n');
+                    break;
+                    
+                case 'explanation_chunk':
+                    appendStreamContent(content);
+                    break;
+                    
+                case 'refined_start':
+                    appendOutput('\n' + content + '\n');
+                    break;
+                    
+                case 'refined_chunk':
+                    appendStreamContent(content);
+                    break;
+                    
+                case 'complete':
+                    resetButton();
+                    break;
+            }
+        }
+
+        function appendOutput(text) {
+            const outputContent = document.getElementById('outputContent');
+            outputContent.textContent += text;
+            outputContent.scrollTop = outputContent.scrollHeight;
+        }
+
+        function appendStreamContent(text) {
+            const outputContent = document.getElementById('outputContent');
+            const span = document.createElement('span');
+            span.textContent = text;
+            span.className = 'typing-effect';
+            outputContent.appendChild(span);
+            outputContent.scrollTop = outputContent.scrollHeight;
+        }
+
+        function setStatus(type, text) {
+            const statusIndicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            
+            statusIndicator.className = 'status-indicator status-' + type;
+            statusText.textContent = text;
+            
+            if (type === 'processing') {
+                statusIndicator.innerHTML = '<span class="spinner"></span><span id="statusText">' + text + '</span>';
+            } else if (type === 'success') {
+                statusIndicator.innerHTML = '✅ <span id="statusText">' + text + '</span>';
+            } else if (type === 'error') {
+                statusIndicator.innerHTML = '❌ <span id="statusText">' + text + '</span>';
+            }
+        }
+
+        function resetButton() {
+            isProcessing = false;
+            document.getElementById('proveButtonText').textContent = '开始证明';
+            document.querySelector('.prove-btn').disabled = false;
+        }
+
+        function clearAll() {
+            document.getElementById('statement').value = '';
+            document.getElementById('outputSection').style.display = 'none';
+            document.getElementById('outputContent').innerHTML = '';
+            
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+            
+            resetButton();
+        }
+
+        // 监听键盘事件
+        document.getElementById('statement').addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                startProof();
+            }
+        });
+    </script>
+</body>
+</html>
