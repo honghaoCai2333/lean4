@@ -762,34 +762,22 @@
                 return `${codeBlockMarker}${codeBlocks.length - 1}${codeBlockMarker}`;
             });
             
-            // 4. 智能修复标题格式（处理AI可能输出的各种格式）
+            // 4. 简化处理 - 强化换行，不转换标题
             
-            // 第一步：统一所有可能的标题格式
-            // 处理纯数字标题 "1. 问题理解"
-            content = content.replace(/(^|\n)(\d+\.\s*(问题理解|证明思路|数学解释))/gm, (match, prefix, titlePart) => {
-                return `${prefix}## ${titlePart}`;
-            });
+            // 移除多余的##符号，保持原有的数字标题格式
+            content = content.replace(/#{1,6}\s*(\d+\.\s*(问题理解|证明思路|数学解释|执行[\/]验证摘要))/g, '$1');
             
-            // 处理其他数字开头的标题
-            content = content.replace(/(^|\n)(\d+\.\s*[^。，、\n]{1,30})/gm, (match, prefix, titleText) => {
-                // 检查是否像标题（短且没有句号等）
-                if (!titleText.includes('。') && !titleText.includes('，') && !titleText.startsWith('##')) {
-                    return `${prefix}## ${titleText}`;
-                }
-                return match;
-            });
+            // 强制在标题前添加换行，无论前面是什么内容
+            content = content.replace(/(.+)(\d+\.\s*(证明思路|数学解释|执行[\/]验证摘要))/g, '$1\n\n$2');
+            content = content.replace(/(.+)(1\.\s*问题理解)/g, '$1\n\n$2');
             
-            // 第二步：确保所有##标题都有正确的格式和空行
-            content = content.replace(/(^|\n)(#{1,6}\s*[^\n]+)/gm, (match, prefix, title) => {
-                // 确保标题前后都有换行，无论原来是什么格式
-                return `\n\n${title}\n\n`;
-            });
+            // 额外确保换行
+            content = content.replace(/([。！？])(\d+\.\s*(问题理解|证明思路|数学解释|执行[\/]验证摘要))/g, '$1\n\n$2');
+            content = content.replace(/([。！？])(\s*)(\d+\.\s*(问题理解|证明思路|数学解释|执行[\/]验证摘要))/g, '$1\n\n$3');
             
-            // 第三步：清理格式
-            // 处理开头的多余换行
+            // 清理多余的换行
+            content = content.replace(/\n{3,}/g, '\n\n');
             content = content.replace(/^\n+/, '');
-            // 清理多余的连续换行，但保持标题前后的空行
-            content = content.replace(/\n{4,}/g, '\n\n\n');
             
             // 5. 处理LaTeX环境（如\begin{align}等）
             content = content.replace(/\\begin\{([^}]+)\}([\s\S]*?)\\end\{\1\}/g, (match, env, body) => {
