@@ -62,10 +62,10 @@ class StreamingProofProcessor:
             system_prompt = self._load_prompt("prompts/system_prompt.txt")
             prompt = system_prompt.format(proof_statement=proof_statement)
             
-            # 添加调试信息
-            print(f"Using model: {self.model}")
-            print(f"API base URL: {self.base_url}")
-            print(f"Temperature: {self.temperature}")
+            # # 添加调试信息
+            # print(f"Using model: {self.model}")
+            # print(f"API base URL: {self.base_url}")
+            # print(f"Temperature: {self.temperature}")
             
             yield self._format_sse_message("正在连接AI服务...", "status")
             
@@ -93,15 +93,28 @@ class StreamingProofProcessor:
                 words = content.split()
                 current_content = ""
                 
-                for i, word in enumerate(words):
-                    current_content += word + " "
-                    # 每10个词输出一次
-                    if i % 10 == 0 or i == len(words) - 1:
-                        yield self._format_sse_message(word + " ", "proof_chunk")
-                        time.sleep(0.1)  # 短暂延迟模拟打字效果
+                # 按句子分割，避免重复
+                sentences = content.replace('\n\n', '|PARAGRAPH|').replace('\n', ' ').split('。')
+                current_chunk = ""
+                
+                for sentence in sentences:
+                    if sentence.strip():
+                        sentence = sentence.replace('|PARAGRAPH|', '\n\n').strip()
+                        current_chunk += sentence + "。"
+                        
+                        # 当积累到合适长度或遇到段落分隔时输出
+                        if len(current_chunk) > 200 or '|PARAGRAPH|' in sentence:
+                            yield self._format_sse_message(current_chunk, "proof_chunk")
+                            current_chunk = ""
+                            time.sleep(0.3)
+                
+                # 输出最后的内容
+                if current_chunk:
+                    yield self._format_sse_message(current_chunk, "proof_chunk")
+                    time.sleep(0.3)
             
             yield self._format_sse_message("", "proof_end")
-            yield self._format_sse_message("✅ 证明生成完成", "success")
+            yield self._format_sse_message("证明生成完成", "success")
             yield self._format_sse_message("", "complete")
             
         except Exception as e:

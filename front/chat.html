@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lean4 数学证明助手</title>
+    <title>LeanBridge-灵桥 数学证明助手</title>
     <style>
         * {
             margin: 0;
@@ -177,6 +177,10 @@
             padding: 12px 16px;
             border-radius: 12px;
             line-height: 1.6;
+            word-wrap: break-word;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
         }
 
         .message.user .message-content {
@@ -314,12 +318,24 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
             line-height: 1.6;
             color: #1f2937;
+            font-weight: normal; /* 确保正文字体不粗 */
         }
 
         .markdown-body h1, .markdown-body h2, .markdown-body h3 {
             margin: 16px 0 12px 0;
             font-weight: 600;
             line-height: 1.25;
+        }
+
+        .markdown-body h2 {
+            font-size: 1.5em;
+            color: #2563eb;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 8px;
+        }
+
+        .markdown-body p, .markdown-body li {
+            font-weight: normal;
         }
 
         .markdown-body code {
@@ -337,6 +353,8 @@
             border-radius: 8px;
             margin: 12px 0;
             overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
         }
 
         .markdown-body pre code {
@@ -344,6 +362,184 @@
             padding: 0;
             font-size: 14px;
             line-height: 1.45;
+        }
+
+        /* JSON 结构化响应样式 */
+        .structured-response {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+        }
+        
+        .section {
+            margin-bottom: 24px;
+            padding: 16px;
+            border-radius: 8px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .section-icon {
+            font-size: 18px;
+        }
+        
+        .understanding-section .section-title {
+            color: #0f766e;
+        }
+        
+        .understanding-section {
+            background: #f0fdfa;
+            border-color: #5eead4;
+        }
+        
+        .thinking-section .section-title {
+            color: #7c3aed;
+        }
+        
+        .thinking-section {
+            background: #faf5ff;
+            border-color: #c4b5fd;
+        }
+        
+        .implementation-section .section-title {
+            color: #dc2626;
+        }
+        
+        .implementation-section {
+            background: #fef2f2;
+            border-color: #fca5a5;
+        }
+        
+        .proof-section .section-title {
+            color: #ea580c;
+        }
+        
+        .proof-section {
+            background: #fff7ed;
+            border-color: #fdba74;
+        }
+        
+        .result-section .section-title {
+            color: #059669;
+        }
+        
+        .result-section {
+            background: #f0fdf4;
+            border-color: #86efac;
+        }
+        
+        .step-item {
+            margin-bottom: 12px;
+            padding: 12px;
+            border-radius: 6px;
+            background: white;
+            border-left: 4px solid #e5e7eb;
+        }
+        
+        .step-item.text-step {
+            border-left-color: #3b82f6;
+        }
+        
+        .step-item.code-step {
+            border-left-color: #f59e0b;
+        }
+        
+        .step-number {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+        
+        .step-description {
+            margin-bottom: 8px;
+            color: #4b5563;
+        }
+        
+        .step-reasoning {
+            font-size: 14px;
+            color: #6b7280;
+            font-style: italic;
+        }
+        
+        .code-block {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 16px;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            margin: 8px 0;
+            overflow-x: auto;
+        }
+        
+        .key-points {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .key-point {
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-success {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .status-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .status-error {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        
+        .symbol-check {
+            background: #f1f5f9;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 8px 0;
+        }
+        
+        .symbol-check-item {
+            font-family: monospace;
+            font-size: 13px;
+            margin: 4px 0;
+        }
+        
+        .symbol-check-item.success {
+            color: #059669;
+        }
+        
+        .symbol-check-item.error {
+            color: #dc2626;
         }
 
         /* 响应式设计 */
@@ -421,10 +617,20 @@
                 displayMath: [['$$', '$$'], ['\\[', '\\]']],
                 processEscapes: true,
                 processEnvironments: true,
-                tags: 'ams'
+                tags: 'ams',
+                packages: {'[+]': ['noerrors']}
             },
             options: {
-                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+                ignoreHtmlClass: 'tex2jax_ignore',
+                processHtmlClass: 'tex2jax_process'
+            },
+            startup: {
+                ready: () => {
+                    console.log('MathJax is loaded, but not yet initialized');
+                    MathJax.startup.defaultReady();
+                    console.log('MathJax is initialized, and the initial typeset is queued');
+                }
             }
         };
     </script>
@@ -447,7 +653,7 @@
     <!-- 主聊天区域 -->
     <div class="main-content">
         <div class="chat-header">
-            <h1 class="chat-title">Lean4 数学证明助手</h1>
+            <h1 class="chat-title">LeanBridge-灵桥 数学证明助手</h1>
             <div class="mode-toggle" onclick="toggleMarkdownMode()" title="切换显示模式">
                 <span id="modeIcon">📝</span>
                 <span id="modeText">Markdown</span>
@@ -457,21 +663,25 @@
         <div class="chat-messages" id="chatMessages">
             <!-- 欢迎屏幕 -->
             <div class="welcome-screen" id="welcomeScreen">
-                <h2>欢迎使用 Lean4 证明助手</h2>
+                <h2>欢迎使用 LeanBridge</h2>
                 <p>输入数学命题，我将帮您生成严格的 Lean4 形式化证明</p>
                 
                 <div class="example-prompts">
-                    <div class="example-prompt" onclick="setExample('对于所有自然数n，n + 0 = n')">
-                        <div class="example-prompt-title">自然数加零</div>
-                        <div class="example-prompt-desc">证明：对于所有自然数n，n + 0 = n</div>
+                    <div class="example-prompt" onclick="setExample('柯西积分公式（Cauchy Integral Formula)')">
+                        <div class="example-prompt-title">复分析</div>
+                        <div class="example-prompt-desc">柯西积分公式（Cauchy Integral Formula)</div>
                     </div>
-                    <div class="example-prompt" onclick="setExample('证明勾股定理：在直角三角形中，a² + b² = c²')">
-                        <div class="example-prompt-title">勾股定理</div>
-                        <div class="example-prompt-desc">经典几何定理的形式化证明</div>
+                    <div class="example-prompt" onclick="setExample('中心极限定理（Central Limit Theorem）')">
+                        <div class="example-prompt-title">概率论</div>
+                        <div class="example-prompt-desc">中心极限定理（Central Limit Theorem）</div>
                     </div>
-                    <div class="example-prompt" onclick="setExample('如果a > b且b > c，则a > c')">
-                        <div class="example-prompt-title">传递性</div>
-                        <div class="example-prompt-desc">证明大于关系的传递性质</div>
+                    <div class="example-prompt" onclick="setExample('米田引理（Yoneda Lemma）')">
+                        <div class="example-prompt-title">范畴学</div>
+                        <div class="example-prompt-desc">米田引理（Yoneda Lemma）</div>
+                    </div>
+                    <div class="example-prompt" onclick="setExample('谱定理（Spectral theorem）')">
+                        <div class="example-prompt-title">线性代数</div>
+                        <div class="example-prompt-desc">谱定理（Spectral theorem）</div>
                     </div>
                 </div>
             </div>
@@ -713,10 +923,32 @@
                                 const data = JSON.parse(line.slice(6));
                                 if (data.type === 'proof_chunk' || data.type === 'explanation_chunk' || data.type === 'refined_chunk') {
                                     fullContent += data.content;
-                                    updateStreamingContent(streamingContent, fullContent);
-                                } else if (data.type === 'status' || data.type === 'proof_start' || data.type === 'explanation_start') {
-                                    fullContent += data.content + '\n';
-                                    updateStreamingContent(streamingContent, fullContent);
+                                    // 处理转义字符并更新显示
+                                    const cleanContent = fullContent.replace(/\\n/g, '\n').replace(/\\\\/g, '\\');
+                                    const processedContent = isMarkdownMode ? marked.parse(preprocessContent(cleanContent)) : escapeHtml(cleanContent);
+                                    streamingContent.innerHTML = processedContent;
+                                    
+                                    // 应用代码高亮
+                                    if (isMarkdownMode) {
+                                        streamingContent.querySelectorAll('pre code').forEach((block) => {
+                                            if (block.textContent.includes('theorem ') || 
+                                                block.textContent.includes('lemma ') || 
+                                                block.textContent.includes('def ') ||
+                                                block.textContent.includes('by ')) {
+                                                block.className = 'language-lean';
+                                            }
+                                            hljs.highlightElement(block);
+                                        });
+                                        
+                                        if (window.MathJax && window.MathJax.typesetPromise) {
+                                            window.MathJax.typesetPromise([streamingContent]).catch((err) => console.log(err));
+                                        }
+                                    }
+                                    
+                                    const chatMessages = document.getElementById('chatMessages');
+                                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                                } else if (data.type === 'proof_start') {
+                                    // 只显示开始信息，不显示其他状态
                                 }
                             } catch (e) {
                                 console.error('解析数据失败:', e);
@@ -737,28 +969,185 @@
             }
         }
 
-        // 更新流式内容
+        // 更新流式内容（已弃用，现在直接在主流程中处理）
         function updateStreamingContent(element, content) {
+            // 这个函数现在主要用于JSON结构化响应
             if (!element) return;
             
-            const processedContent = isMarkdownMode ? marked.parse(preprocessContent(content)) : escapeHtml(content);
-            element.innerHTML = processedContent;
-            
-            if (isMarkdownMode) {
-                element.querySelectorAll('pre code').forEach((block) => {
-                    if (block.textContent.includes('theorem ') || 
-                        block.textContent.includes('lemma ') || 
-                        block.textContent.includes('def ') ||
-                        block.textContent.includes('by ')) {
-                        block.className = 'language-lean';
-                    }
-                    hljs.highlightElement(block);
-                });
-                
-                if (window.MathJax && window.MathJax.typesetPromise) {
-                    window.MathJax.typesetPromise([element]).catch((err) => console.log(err));
+            // 尝试解析JSON结构化响应
+            try {
+                if (content.trim().startsWith('{') && content.trim().endsWith('}')) {
+                    const jsonData = JSON.parse(content);
+                    renderStructuredResponse(element, jsonData);
+                    return;
                 }
+            } catch (e) {
+                // 如果不是JSON，回退到简单处理
             }
+            
+            // 简单处理非JSON内容
+            const cleanContent = content.replace(/\\n/g, '\n').replace(/\\\\/g, '\\');
+            const processedContent = isMarkdownMode ? marked.parse(preprocessContent(cleanContent)) : escapeHtml(cleanContent);
+            element.innerHTML = processedContent;
+        }
+
+        // 渲染结构化响应
+        function renderStructuredResponse(element, data) {
+            let html = '<div class="structured-response">';
+            
+            // 理解部分
+            if (data.understanding) {
+                html += `
+                    <div class="section understanding-section">
+                        <div class="section-title">
+                            <span class="section-icon">🤔</span>
+                            问题理解
+                        </div>
+                        <p>${escapeHtml(data.understanding.description)}</p>
+                        ${data.understanding.mathematical_statement ? `
+                            <div style="margin: 12px 0; padding: 12px; background: white; border-radius: 6px;">
+                                <strong>数学陈述：</strong><br>
+                                $${data.understanding.mathematical_statement}$
+                            </div>
+                        ` : ''}
+                        ${data.understanding.key_points && data.understanding.key_points.length > 0 ? `
+                            <div class="key-points">
+                                ${data.understanding.key_points.map(point => `<span class="key-point">${escapeHtml(point)}</span>`).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+            
+            // 思考过程
+            if (data.thinking_process) {
+                html += `
+                    <div class="section thinking-section">
+                        <div class="section-title">
+                            <span class="section-icon">💭</span>
+                            思考过程
+                        </div>
+                        ${data.thinking_process.strategy ? `<p><strong>策略：</strong> ${escapeHtml(data.thinking_process.strategy)}</p>` : ''}
+                        ${data.thinking_process.approach ? `<p><strong>方法：</strong> ${escapeHtml(data.thinking_process.approach)}</p>` : ''}
+                        
+                        ${data.thinking_process.steps ? data.thinking_process.steps.map(step => `
+                            <div class="step-item ${step.type === 'code' ? 'code-step' : 'text-step'}">
+                                <div class="step-number">步骤 ${step.step_number}</div>
+                                <div class="step-description">${escapeHtml(step.description)}</div>
+                                ${step.reasoning ? `<div class="step-reasoning">${escapeHtml(step.reasoning)}</div>` : ''}
+                                ${step.code_block ? `<div class="code-block">${escapeHtml(step.code_block)}</div>` : ''}
+                            </div>
+                        `).join('') : ''}
+                        
+                        ${data.thinking_process.potential_issues && data.thinking_process.potential_issues.length > 0 ? `
+                            <div style="margin-top: 16px;">
+                                <strong>潜在问题：</strong>
+                                <ul>
+                                    ${data.thinking_process.potential_issues.map(issue => `<li>${escapeHtml(issue)}</li>`).join('')}
+                                </ul>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+            
+            // Lean实现
+            if (data.lean_implementation) {
+                html += `
+                    <div class="section implementation-section">
+                        <div class="section-title">
+                            <span class="section-icon">⚙️</span>
+                            Lean 实现
+                        </div>
+                        
+                        ${data.lean_implementation.symbol_check ? `
+                            <div class="symbol-check">
+                                <strong>符号检查：</strong>
+                                ${data.lean_implementation.symbol_check.results.map(result => `
+                                    <div class="symbol-check-item ${result.startsWith('✓') ? 'success' : 'error'}">
+                                        ${escapeHtml(result)}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                        
+                        ${data.lean_implementation.complete_code ? `
+                            <div class="code-block">${escapeHtml(data.lean_implementation.complete_code)}</div>
+                        ` : ''}
+                        
+                        ${data.lean_implementation.compilation_status ? `
+                            <div style="margin: 12px 0;">
+                                <span class="status-badge ${data.lean_implementation.compilation_status === '成功' ? 'status-success' : 'status-error'}">
+                                    ${data.lean_implementation.compilation_status}
+                                </span>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+            
+            // 数学证明
+            if (data.mathematical_proof) {
+                html += `
+                    <div class="section proof-section">
+                        <div class="section-title">
+                            <span class="section-icon">📊</span>
+                            数学证明
+                        </div>
+                        ${data.mathematical_proof.proof_outline ? `<p><strong>证明概要：</strong> ${escapeHtml(data.mathematical_proof.proof_outline)}</p>` : ''}
+                        ${data.mathematical_proof.detailed_proof ? `
+                            <div style="margin: 12px 0; padding: 12px; background: white; border-radius: 6px;">
+                                <strong>详细证明：</strong><br>
+                                ${marked.parse(data.mathematical_proof.detailed_proof)}
+                            </div>
+                        ` : ''}
+                        ${data.mathematical_proof.key_lemmas && data.mathematical_proof.key_lemmas.length > 0 ? `
+                            <div style="margin-top: 12px;">
+                                <strong>关键引理：</strong>
+                                <ul>
+                                    ${data.mathematical_proof.key_lemmas.map(lemma => `<li><code>${escapeHtml(lemma)}</code></li>`).join('')}
+                                </ul>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+            
+            // 最终结果
+            if (data.final_result) {
+                html += `
+                    <div class="section result-section">
+                        <div class="section-title">
+                            <span class="section-icon">🎯</span>
+                            最终结果
+                        </div>
+                        <div style="margin-bottom: 12px;">
+                            <span class="status-badge ${
+                                data.final_result.status === '成功' ? 'status-success' : 
+                                data.final_result.status === '需要调整' ? 'status-warning' : 'status-error'
+                            }">
+                                ${data.final_result.status}
+                            </span>
+                        </div>
+                        ${data.final_result.final_statement ? `<p><strong>最终命题：</strong> ${escapeHtml(data.final_result.final_statement)}</p>` : ''}
+                        ${data.final_result.modifications ? `<p><strong>修改说明：</strong> ${escapeHtml(data.final_result.modifications)}</p>` : ''}
+                        ${data.final_result.verification ? `<p><strong>验证结果：</strong> ${escapeHtml(data.final_result.verification)}</p>` : ''}
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            element.innerHTML = html;
+            
+            // 渲染数学公式
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                window.MathJax.typesetPromise([element]).catch((err) => console.log(err));
+            }
+            
+            // 高亮代码
+            element.querySelectorAll('.code-block').forEach((block) => {
+                hljs.highlightElement(block);
+            });
             
             const chatMessages = document.getElementById('chatMessages');
             chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -766,47 +1155,81 @@
 
         // 预处理内容（Markdown和LaTeX）
         function preprocessContent(content) {
-            // 保护已有的代码块
+            // 保护已有的代码块和数学公式
             const codeBlockMarker = '___CODEBLOCK___';
+            const mathBlockMarker = '___MATHBLOCK___';
+            const inlineMathMarker = '___INLINEMATH___';
             const codeBlocks = [];
+            const mathBlocks = [];
+            const inlineMaths = [];
+            
+            // 1. 保护已有的数学块公式 $$...$$ 
+            content = content.replace(/\$\$[\s\S]*?\$\$/g, (match) => {
+                mathBlocks.push(match);
+                return `${mathBlockMarker}${mathBlocks.length - 1}${mathBlockMarker}`;
+            });
+            
+            // 2. 保护已有的内联数学公式 $...$
+            content = content.replace(/\$[^$\n]+\$/g, (match) => {
+                inlineMaths.push(match);
+                return `${inlineMathMarker}${inlineMaths.length - 1}${inlineMathMarker}`;
+            });
+            
+            // 3. 保护已有的代码块
             content = content.replace(/```[\s\S]*?```/g, (match) => {
                 codeBlocks.push(match);
                 return `${codeBlockMarker}${codeBlocks.length - 1}${codeBlockMarker}`;
             });
             
-            // 处理LaTeX环境
+            // 4. 智能修复标题格式（处理AI可能输出的各种格式）
+            
+            // 第一步：统一所有可能的标题格式
+            // 处理纯数字标题 "1. 问题理解"
+            content = content.replace(/(^|\n)(\d+\.\s*(问题理解|证明思路|数学解释))/gm, (match, prefix, titlePart) => {
+                return `${prefix}## ${titlePart}`;
+            });
+            
+            // 处理其他数字开头的标题
+            content = content.replace(/(^|\n)(\d+\.\s*[^。，、\n]{1,30})/gm, (match, prefix, titleText) => {
+                // 检查是否像标题（短且没有句号等）
+                if (!titleText.includes('。') && !titleText.includes('，') && !titleText.startsWith('##')) {
+                    return `${prefix}## ${titleText}`;
+                }
+                return match;
+            });
+            
+            // 第二步：确保所有##标题都有正确的格式和空行
+            content = content.replace(/(^|\n)(#{1,6}\s*[^\n]+)/gm, (match, prefix, title) => {
+                // 确保标题前后都有换行，无论原来是什么格式
+                return `\n\n${title}\n\n`;
+            });
+            
+            // 第三步：清理格式
+            // 处理开头的多余换行
+            content = content.replace(/^\n+/, '');
+            // 清理多余的连续换行，但保持标题前后的空行
+            content = content.replace(/\n{4,}/g, '\n\n\n');
+            
+            // 5. 处理LaTeX环境
             content = content.replace(/\\begin\{([^}]+)\}([\s\S]*?)\\end\{\1\}/g, (match, env, body) => {
                 return `$$\\begin{${env}}${body}\\end{${env}}$$`;
             });
             
-            // 处理常见的LaTeX数学命令
-            const mathCommands = ['frac', 'sqrt', 'sum', 'int', 'lim', 'infty', 'alpha', 'beta', 'gamma', 'delta', 'theta', 'pi', 'sigma', 'phi', 'omega'];
-            mathCommands.forEach(cmd => {
-                const regex = new RegExp(`\\\\${cmd}\\b`, 'g');
-                content = content.replace(regex, `$\\${cmd}$`);
-            });
+            // 6. 暂时禁用自动Lean4代码识别，防止误判整个内容为代码
+            // 依赖AI自己输出正确的markdown格式
+            // TODO: 未来可以添加更精确的Lean4代码识别逻辑
             
-            // 处理带大括号的LaTeX命令
-            content = content.replace(/\\([a-zA-Z]+)\{([^}]*)\}/g, (match, cmd, arg) => {
-                return `$\\${cmd}{${arg}}$`;
-            });
-            
-            // 识别Lean4代码
-            const leanPatterns = [
-                /(theorem\s+\w+[^:]*:[^:]*:=[\s\S]*?)(?=\n\s*(?:theorem|lemma|def|example|\n\n|$))/g,
-                /(lemma\s+\w+[^:]*:[^:]*:=[\s\S]*?)(?=\n\s*(?:theorem|lemma|def|example|\n\n|$))/g,
-                /(def\s+\w+[^:]*:[^:]*:=[\s\S]*?)(?=\n\s*(?:theorem|lemma|def|example|\n\n|$))/g
-            ];
-            
-            leanPatterns.forEach(pattern => {
-                content = content.replace(pattern, (match) => {
-                    return `\`\`\`lean\n${match.trim()}\n\`\`\``;
-                });
-            });
-            
-            // 恢复代码块
+            // 7. 恢复保护的内容
             content = content.replace(new RegExp(`${codeBlockMarker}(\\d+)${codeBlockMarker}`, 'g'), (match, index) => {
                 return codeBlocks[parseInt(index)];
+            });
+            
+            content = content.replace(new RegExp(`${mathBlockMarker}(\\d+)${mathBlockMarker}`, 'g'), (match, index) => {
+                return mathBlocks[parseInt(index)];
+            });
+            
+            content = content.replace(new RegExp(`${inlineMathMarker}(\\d+)${inlineMathMarker}`, 'g'), (match, index) => {
+                return inlineMaths[parseInt(index)];
             });
             
             return content;

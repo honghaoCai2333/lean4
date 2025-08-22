@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lean4 数学证明助手</title>
+    <title>LeanBridge-灵桥 数学证明助手</title>
     <style>
         * {
             margin: 0;
@@ -179,6 +179,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
             line-height: 1.6;
             color: #333;
+            font-weight: normal; /* 确保正文字体不粗 */
         }
 
         .markdown-body h1, .markdown-body h2, .markdown-body h3 {
@@ -186,6 +187,17 @@
             margin-bottom: 16px;
             font-weight: 600;
             line-height: 1.25;
+        }
+
+        .markdown-body h2 {
+            font-size: 1.5em;
+            color: #2563eb;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 8px;
+        }
+
+        .markdown-body p, .markdown-body li {
+            font-weight: normal;
         }
 
         .markdown-body h1 {
@@ -453,10 +465,20 @@
                 displayMath: [['$$', '$$'], ['\\[', '\\]']],
                 processEscapes: true,
                 processEnvironments: true,
-                tags: 'ams'
+                tags: 'ams',
+                packages: {'[+]': ['noerrors']}
             },
             options: {
-                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+                ignoreHtmlClass: 'tex2jax_ignore',
+                processHtmlClass: 'tex2jax_process'
+            },
+            startup: {
+                ready: () => {
+                    console.log('MathJax is loaded, but not yet initialized');
+                    MathJax.startup.defaultReady();
+                    console.log('MathJax is initialized, and the initial typeset is queued');
+                }
             }
         };
     </script>
@@ -465,7 +487,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>Lean4 数学证明助手</h1>
+        <h1>LeanBridge-灵桥 数学证明助手</h1>
         <p class="subtitle">基于AI的自动化数学定理证明系统</p>
         
         <div class="input-section">
@@ -714,58 +736,81 @@
         }
         
         function preprocessContent(content) {
-            // 1. 保护已有的代码块不被修改
+            // 保护已有的代码块和数学公式
             const codeBlockMarker = '___CODEBLOCK___';
+            const mathBlockMarker = '___MATHBLOCK___';
+            const inlineMathMarker = '___INLINEMATH___';
             const codeBlocks = [];
+            const mathBlocks = [];
+            const inlineMaths = [];
+            
+            // 1. 保护已有的数学块公式 $$...$$ 
+            content = content.replace(/\$\$[\s\S]*?\$\$/g, (match) => {
+                mathBlocks.push(match);
+                return `${mathBlockMarker}${mathBlocks.length - 1}${mathBlockMarker}`;
+            });
+            
+            // 2. 保护已有的内联数学公式 $...$
+            content = content.replace(/\$[^$\n]+\$/g, (match) => {
+                inlineMaths.push(match);
+                return `${inlineMathMarker}${inlineMaths.length - 1}${inlineMathMarker}`;
+            });
+            
+            // 3. 保护已有的代码块
             content = content.replace(/```[\s\S]*?```/g, (match) => {
                 codeBlocks.push(match);
                 return `${codeBlockMarker}${codeBlocks.length - 1}${codeBlockMarker}`;
             });
             
-            // 2. 处理LaTeX环境（如\begin{align}等）
-            content = content.replace(/\\begin\{([^}]+)\}([\s\S]*?)\\end\{\1\}/g, (match, env, body) => {
-                return `$$\\begin{${env}}${body}\\end{${env}}$$`;
+            // 4. 智能修复标题格式（处理AI可能输出的各种格式）
+            
+            // 第一步：统一所有可能的标题格式
+            // 处理纯数字标题 "1. 问题理解"
+            content = content.replace(/(^|\n)(\d+\.\s*(问题理解|证明思路|数学解释))/gm, (match, prefix, titlePart) => {
+                return `${prefix}## ${titlePart}`;
             });
             
-            // 3. 处理常见的LaTeX数学命令
-            const mathCommands = ['frac', 'sqrt', 'sum', 'int', 'lim', 'infty', 'alpha', 'beta', 'gamma', 'delta', 'theta', 'pi', 'sigma', 'phi', 'omega', 'forall', 'exists', 'in', 'subseteq', 'cup', 'cap', 'cdot', 'times', 'pm', 'leq', 'geq', 'neq', 'approx', 'equiv', 'rightarrow', 'leftarrow', 'Rightarrow', 'Leftarrow'];
-            
-            mathCommands.forEach(cmd => {
-                const regex = new RegExp(`\\\\${cmd}\\b`, 'g');
-                content = content.replace(regex, `$\\${cmd}$`);
-            });
-            
-            // 4. 处理带大括号的LaTeX命令
-            content = content.replace(/\\([a-zA-Z]+)\{([^}]*)\}/g, (match, cmd, arg) => {
-                return `$\\${cmd}{${arg}}$`;
-            });
-            
-            // 5. 识别并格式化Lean4代码
-            // 匹配theorem、lemma、def等结构
-            const leanPatterns = [
-                /(theorem\s+\w+[^:]*:[^:]*:=[\s\S]*?)(?=\n\s*(?:theorem|lemma|def|example|\n\n|$))/g,
-                /(lemma\s+\w+[^:]*:[^:]*:=[\s\S]*?)(?=\n\s*(?:theorem|lemma|def|example|\n\n|$))/g,
-                /(def\s+\w+[^:]*:[^:]*:=[\s\S]*?)(?=\n\s*(?:theorem|lemma|def|example|\n\n|$))/g,
-                /(example[^:]*:[^:]*:=[\s\S]*?)(?=\n\s*(?:theorem|lemma|def|example|\n\n|$))/g
-            ];
-            
-            leanPatterns.forEach(pattern => {
-                content = content.replace(pattern, (match) => {
-                    return `\`\`\`lean\n${match.trim()}\n\`\`\``;
-                });
-            });
-            
-            // 6. 识别Lean4证明策略
-            content = content.replace(/(by\s+[\s\S]*?)(?=\n\s*(?:theorem|lemma|def|example|\n\n|$))/g, (match) => {
-                if (!match.includes('```')) {
-                    return `\`\`\`lean\n${match.trim()}\n\`\`\``;
+            // 处理其他数字开头的标题
+            content = content.replace(/(^|\n)(\d+\.\s*[^。，、\n]{1,30})/gm, (match, prefix, titleText) => {
+                // 检查是否像标题（短且没有句号等）
+                if (!titleText.includes('。') && !titleText.includes('，') && !titleText.startsWith('##')) {
+                    return `${prefix}## ${titleText}`;
                 }
                 return match;
             });
             
-            // 7. 恢复代码块
+            // 第二步：确保所有##标题都有正确的格式和空行
+            content = content.replace(/(^|\n)(#{1,6}\s*[^\n]+)/gm, (match, prefix, title) => {
+                // 确保标题前后都有换行，无论原来是什么格式
+                return `\n\n${title}\n\n`;
+            });
+            
+            // 第三步：清理格式
+            // 处理开头的多余换行
+            content = content.replace(/^\n+/, '');
+            // 清理多余的连续换行，但保持标题前后的空行
+            content = content.replace(/\n{4,}/g, '\n\n\n');
+            
+            // 5. 处理LaTeX环境（如\begin{align}等）
+            content = content.replace(/\\begin\{([^}]+)\}([\s\S]*?)\\end\{\1\}/g, (match, env, body) => {
+                return `$$\\begin{${env}}${body}\\end{${env}}$$`;
+            });
+            
+            // 6. 暂时禁用自动Lean4代码识别，防止误判整个内容为代码
+            // 依赖AI自己输出正确的markdown格式
+            // TODO: 未来可以添加更精确的Lean4代码识别逻辑
+            
+            // 7. 恢复保护的内容
             content = content.replace(new RegExp(`${codeBlockMarker}(\\d+)${codeBlockMarker}`, 'g'), (match, index) => {
                 return codeBlocks[parseInt(index)];
+            });
+            
+            content = content.replace(new RegExp(`${mathBlockMarker}(\\d+)${mathBlockMarker}`, 'g'), (match, index) => {
+                return mathBlocks[parseInt(index)];
+            });
+            
+            content = content.replace(new RegExp(`${inlineMathMarker}(\\d+)${inlineMathMarker}`, 'g'), (match, index) => {
+                return inlineMaths[parseInt(index)];
             });
             
             // 8. 清理多余的空行
