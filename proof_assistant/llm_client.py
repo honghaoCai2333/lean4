@@ -67,9 +67,7 @@ class LLMClient:
         prompt = prompt_template.format(original_proof=original_proof, error_message=error_message)
         
         try:
-            print(f"调用模型: {self.model}")
-            print(f"API基础URL: {self.base_url}")
-            
+
             response = completion(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
@@ -100,7 +98,7 @@ class LLMClient:
             result = response.choices[0].message.content.strip()
             
             if not result:
-                return "解释功能暂时不可用，但证明代码已验证成功。"
+                return "证明代码已验证成功。"
             
             return result
             

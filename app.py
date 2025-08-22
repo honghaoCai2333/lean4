@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from flask import Flask, request, jsonify, Response, stream_with_context
+from flask import Flask, request, jsonify, Response, stream_with_context, send_from_directory
 from flask_cors import CORS
 import json
 import yaml
@@ -10,6 +10,7 @@ import os
 from proof_assistant import ProofProcessor
 from proof_assistant.llm_client import LLMClient
 from proof_assistant.lean_executor import LeanExecutor
+from database import ProofDatabase
 
 app = Flask(__name__)
 CORS(app)
@@ -30,6 +31,12 @@ class StreamingProofProcessor:
             os.environ['OPENAI_API_KEY'] = self.api_key
         if self.base_url:
             os.environ['OPENAI_API_BASE'] = self.base_url
+            
+        # 添加SSL相关环境变量，尝试解决SSL问题
+        import ssl
+        import certifi
+        os.environ['SSL_CERT_FILE'] = certifi.where()
+        os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
     
     def _load_config(self, config_path: str) -> dict:
         try:
@@ -46,7 +53,7 @@ class StreamingProofProcessor:
             raise Exception(f"提示文件未找到: {prompt_file}")
     
     def stream_proof_generation(self, proof_statement: str) -> Generator:
-        """流式生成证明过程"""
+        """生成证明过程"""
         try:
             # 1. 开始生成证明
             yield self._format_sse_message("开始生成Lean4证明代码...", "status")
@@ -55,7 +62,14 @@ class StreamingProofProcessor:
             system_prompt = self._load_prompt("prompts/system_prompt.txt")
             prompt = system_prompt.format(proof_statement=proof_statement)
             
-            # 使用配置文件中的参数
+            # 添加调试信息
+            print(f"Using model: {self.model}")
+            print(f"API base URL: {self.base_url}")
+            print(f"Temperature: {self.temperature}")
+            
+            yield self._format_sse_message("正在连接AI服务...", "status")
+            
+            # 使用litellm的非流式请求
             response = completion(
                 model=self.model,
                 messages=[
@@ -63,35 +77,39 @@ class StreamingProofProcessor:
                     {"role": "user", "content": prompt}
                 ],
                 temperature=self.temperature,
-                max_tokens=self.max_tokens,  # 使用配置文件中的值
-                stream=True,
-                timeout=60  # 超时设置为60秒
+                max_tokens=self.max_tokens,
+                stream=False,  # 非流式请求
+                timeout=300
             )
             
-            proof_code = ""
-            yield self._format_sse_message("生成证明代码中：\n", "proof_start")
+            yield self._format_sse_message("AI正在生成证明...", "proof_start")
             
-            chunk_count = 0
-            for chunk in response:
-                chunk_count += 1
-                if hasattr(chunk, 'choices') and len(chunk.choices) > 0:
-                    delta = chunk.choices[0].delta
-                    if hasattr(delta, 'content') and delta.content:
-                        content = delta.content
-                        proof_code += content
-                        yield self._format_sse_message(content, "proof_chunk")
+            # 获取完整响应
+            if hasattr(response, 'choices') and len(response.choices) > 0:
+                content = response.choices[0].message.content
                 
-                # 每50个chunk发送一个心跳，保持连接活跃
-                if chunk_count % 50 == 0:
-                    yield self._format_sse_message("", "heartbeat")
+                # 模拟流式输出效果
+                import time
+                words = content.split()
+                current_content = ""
+                
+                for i, word in enumerate(words):
+                    current_content += word + " "
+                    # 每10个词输出一次
+                    if i % 10 == 0 or i == len(words) - 1:
+                        yield self._format_sse_message(word + " ", "proof_chunk")
+                        time.sleep(0.1)  # 短暂延迟模拟打字效果
             
             yield self._format_sse_message("", "proof_end")
             yield self._format_sse_message("✅ 证明生成完成", "success")
             yield self._format_sse_message("", "complete")
             
         except Exception as e:
+            import traceback
             error_msg = str(e)
-            print(f"Error in stream_proof_generation: {error_msg}")  # 服务器端日志
+            traceback_msg = traceback.format_exc()
+            print(f"Error in stream_proof_generation: {error_msg}")
+            print(f"Full traceback: {traceback_msg}")
             yield self._format_sse_message(f"错误: {error_msg}", "error")
             yield self._format_sse_message("", "complete")
     
@@ -103,8 +121,9 @@ class StreamingProofProcessor:
         }
         return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
-# 初始化处理器
+# 初始化处理器和数据库
 processor = StreamingProofProcessor()
+db = ProofDatabase()
 
 @app.route('/api/prove', methods=['POST'])
 def prove():
@@ -133,6 +152,110 @@ def prove():
 def health():
     """健康检查接口"""
     return jsonify({"status": "healthy"})
+
+@app.route('/api/test', methods=['POST'])
+def test_api():
+    """测试API连接"""
+    try:
+        response = completion(
+            model=processor.model,
+            messages=[{"role": "user", "content": "Hello, test connection"}],
+            max_tokens=10,
+            timeout=30
+        )
+        return jsonify({"status": "success", "response": str(response)})
+    except Exception as e:
+        import traceback
+        return jsonify({
+            "status": "error", 
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
+
+@app.route('/api/sessions', methods=['GET'])
+def get_sessions():
+    """获取历史会话列表"""
+    try:
+        sessions = db.get_recent_sessions(limit=3)  # 只返回最近3个
+        return jsonify({"sessions": sessions})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/sessions', methods=['POST'])
+def create_session():
+    """创建新会话"""
+    try:
+        data = request.json
+        statement = data.get('statement')
+        title = data.get('title')
+        
+        if not statement:
+            return jsonify({"error": "请提供需要证明的命题"}), 400
+        
+        session_id = db.create_session(statement, title)
+        session = db.get_session(session_id)
+        return jsonify({"session": session}), 201
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/sessions/<int:session_id>', methods=['GET'])
+def get_session(session_id):
+    """获取特定会话详情"""
+    try:
+        session = db.get_session(session_id)
+        if not session:
+            return jsonify({"error": "会话不存在"}), 404
+        return jsonify({"session": session})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/sessions/<int:session_id>/prove', methods=['POST'])
+def prove_in_session(session_id):
+    """在特定会话中进行证明"""
+    try:
+        # 检查会话是否存在
+        session = db.get_session(session_id)
+        if not session:
+            return jsonify({"error": "会话不存在"}), 404
+        
+        # 使用会话中的statement进行证明
+        statement = session['statement']
+        
+        # 保存完整的证明结果
+        full_proof = ""
+        
+        def generate_and_save():
+            nonlocal full_proof
+            for chunk in processor.stream_proof_generation(statement):
+                full_proof += chunk
+                yield chunk
+            
+            # 证明完成后保存到数据库
+            db.update_session_proof(session_id, full_proof)
+        
+        # 返回流式响应
+        return Response(
+            stream_with_context(generate_and_save()),
+            mimetype='text/event-stream',
+            headers={
+                'Cache-Control': 'no-cache',
+                'X-Accel-Buffering': 'no'
+            }
+        )
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/')
+def index():
+    """提供前端HTML文件"""
+    return send_from_directory('front', 'chat.html')
+
+@app.route('/<path:filename>')
+def static_files(filename):
+    """提供静态文件"""
+    return send_from_directory('front', filename)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001, threaded=True)

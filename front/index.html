@@ -170,9 +170,126 @@
             min-height: 200px;
             max-height: 500px;
             overflow-y: auto;
-            font-family: 'Courier New', Courier, monospace;
             font-size: 14px;
             line-height: 1.6;
+        }
+
+        /* Markdown样式 */
+        .markdown-body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+
+        .markdown-body h1 {
+            font-size: 2em;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.3em;
+        }
+
+        .markdown-body h2 {
+            font-size: 1.5em;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.3em;
+        }
+
+        .markdown-body h3 {
+            font-size: 1.25em;
+        }
+
+        .markdown-body code {
+            padding: 0.2em 0.4em;
+            margin: 0;
+            font-size: 85%;
+            background-color: rgba(27,31,35,0.05);
+            border-radius: 3px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .markdown-body pre {
+            padding: 16px;
+            overflow: auto;
+            font-size: 85%;
+            line-height: 1.45;
+            background-color: #f6f8fa;
+            border-radius: 6px;
+            margin: 16px 0;
+        }
+
+        .markdown-body pre code {
+            display: inline;
+            padding: 0;
+            margin: 0;
+            overflow: visible;
+            line-height: inherit;
+            word-wrap: normal;
+            background-color: transparent;
+            border: 0;
+        }
+
+        .markdown-body blockquote {
+            padding: 0 1em;
+            color: #6a737d;
+            border-left: 0.25em solid #dfe2e5;
+            margin: 16px 0;
+        }
+
+        .markdown-body ul, .markdown-body ol {
+            padding-left: 2em;
+            margin: 16px 0;
+        }
+
+        .markdown-body li {
+            margin: 0.25em 0;
+        }
+
+        .markdown-body table {
+            border-spacing: 0;
+            border-collapse: collapse;
+            margin: 16px 0;
+        }
+
+        .markdown-body table th,
+        .markdown-body table td {
+            padding: 6px 13px;
+            border: 1px solid #dfe2e5;
+        }
+
+        .markdown-body table th {
+            font-weight: 600;
+            background-color: #f6f8fa;
+        }
+
+        .markdown-body hr {
+            height: 0.25em;
+            padding: 0;
+            margin: 24px 0;
+            background-color: #e1e4e8;
+            border: 0;
+        }
+
+        .markdown-body p {
+            margin: 16px 0;
+        }
+
+        .markdown-body strong {
+            font-weight: 600;
+        }
+
+        .markdown-body em {
+            font-style: italic;
+        }
+
+        /* 原始文本样式 */
+        .raw-content {
+            font-family: 'Courier New', Courier, monospace;
             white-space: pre-wrap;
             word-wrap: break-word;
         }
@@ -235,7 +352,116 @@
             from { opacity: 0.3; }
             to { opacity: 1; }
         }
+        
+        .toggle-mode-btn {
+            padding: 6px 12px;
+            background: #fff;
+            color: #667eea;
+            border: 2px solid #667eea;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.3s;
+        }
+        
+        .toggle-mode-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        /* Lean4语法高亮自定义样式 */
+        .language-lean {
+            background-color: #f8f9fa !important;
+        }
+        
+        .hljs-keyword {
+            color: #d63384;
+            font-weight: bold;
+        }
+        
+        .hljs-title {
+            color: #0d6efd;
+            font-weight: bold;
+        }
+        
+        .hljs-type {
+            color: #20c997;
+        }
+        
+        .hljs-comment {
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        /* 数学公式样式 */
+        .MathJax {
+            font-size: 1.1em !important;
+        }
+        
+        .MathJax_Display {
+            margin: 1em 0 !important;
+            text-align: center !important;
+        }
+        
+        /* 改进代码块样式 */
+        .markdown-body pre {
+            background-color: #f6f8fa;
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 16px 0;
+            overflow-x: auto;
+        }
+        
+        .markdown-body pre code {
+            background-color: transparent;
+            font-size: 14px;
+            line-height: 1.45;
+        }
+        
+        /* 内联代码样式 */
+        .markdown-body code {
+            background-color: rgba(27,31,35,0.05);
+            border-radius: 3px;
+            padding: 0.2em 0.4em;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: 85%;
+        }
+        
+        /* 数学环境特殊样式 */
+        .math-environment {
+            background-color: #f9f9f9;
+            border-left: 4px solid #667eea;
+            padding: 10px 15px;
+            margin: 15px 0;
+            border-radius: 0 5px 5px 0;
+        }
     </style>
+    <!-- 引入marked.js用于Markdown解析 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- 引入highlight.js用于代码高亮 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+    <!-- 引入MathJax用于数学公式渲染 -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true,
+                processEnvironments: true,
+                tags: 'ams'
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
     <div class="container">
@@ -264,12 +490,18 @@
         <div class="output-section" id="outputSection">
             <div class="output-header">
                 <span class="output-title">证明过程</span>
-                <div class="status-indicator" id="statusIndicator">
-                    <span class="spinner"></span>
-                    <span id="statusText">处理中...</span>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <button class="toggle-mode-btn" onclick="toggleMarkdownMode()" title="切换显示模式">
+                        <span id="modeIcon">📝</span>
+                        <span id="modeText">Markdown</span>
+                    </button>
+                    <div class="status-indicator" id="statusIndicator">
+                        <span class="spinner"></span>
+                        <span id="statusText">处理中...</span>
+                    </div>
                 </div>
             </div>
-            <div class="output-content" id="outputContent"></div>
+            <div class="output-content markdown-body" id="outputContent"></div>
         </div>
     </div>
 
@@ -277,6 +509,22 @@
         let eventSource = null;
         let currentContent = '';
         let isProcessing = false;
+        let markdownBuffer = '';
+        let isMarkdownMode = true; // 默认开启Markdown模式
+        
+        // 配置marked选项
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            highlight: function(code, lang) {
+                if (lang && hljs.getLanguage(lang)) {
+                    try {
+                        return hljs.highlight(code, { language: lang }).value;
+                    } catch (e) {}
+                }
+                return hljs.highlightAuto(code).value;
+            }
+        });
 
         function setExample(text) {
             document.getElementById('statement').value = text;
@@ -300,6 +548,7 @@
             // 更新UI状态
             document.getElementById('outputSection').style.display = 'block';
             document.getElementById('outputContent').innerHTML = '';
+            markdownBuffer = ''; // 重置Markdown缓冲区
             document.getElementById('proveButtonText').textContent = '证明中...';
             document.querySelector('.prove-btn').disabled = true;
             
@@ -424,17 +673,111 @@
 
         function appendOutput(text) {
             const outputContent = document.getElementById('outputContent');
-            outputContent.textContent += text;
-            outputContent.scrollTop = outputContent.scrollHeight;
+            markdownBuffer += text;
+            renderMarkdown();
         }
 
         function appendStreamContent(text) {
+            markdownBuffer += text;
+            renderMarkdown();
+        }
+        
+        function renderMarkdown() {
             const outputContent = document.getElementById('outputContent');
-            const span = document.createElement('span');
-            span.textContent = text;
-            span.className = 'typing-effect';
-            outputContent.appendChild(span);
+            if (isMarkdownMode) {
+                // 预处理内容：改进LaTeX公式和代码块的识别
+                let processedContent = preprocessContent(markdownBuffer);
+                // 使用marked解析Markdown
+                outputContent.innerHTML = marked.parse(processedContent);
+                // 对所有代码块应用高亮
+                outputContent.querySelectorAll('pre code').forEach((block) => {
+                    // 检测Lean4代码并设置语言
+                    if (block.textContent.includes('theorem ') || 
+                        block.textContent.includes('lemma ') || 
+                        block.textContent.includes('def ') ||
+                        block.textContent.includes('by ') ||
+                        block.textContent.includes('rw ') ||
+                        block.textContent.includes('simp')) {
+                        block.className = 'language-lean';
+                    }
+                    hljs.highlightElement(block);
+                });
+                // 渲染数学公式
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                    window.MathJax.typesetPromise([outputContent]).catch((err) => console.log(err));
+                }
+            } else {
+                // 原始文本模式
+                outputContent.innerHTML = '<div class="raw-content">' + escapeHtml(markdownBuffer) + '</div>';
+            }
             outputContent.scrollTop = outputContent.scrollHeight;
+        }
+        
+        function preprocessContent(content) {
+            // 1. 保护已有的代码块不被修改
+            const codeBlockMarker = '___CODEBLOCK___';
+            const codeBlocks = [];
+            content = content.replace(/```[\s\S]*?```/g, (match) => {
+                codeBlocks.push(match);
+                return `${codeBlockMarker}${codeBlocks.length - 1}${codeBlockMarker}`;
+            });
+            
+            // 2. 处理LaTeX环境（如\begin{align}等）
+            content = content.replace(/\\begin\{([^}]+)\}([\s\S]*?)\\end\{\1\}/g, (match, env, body) => {
+                return `$$\\begin{${env}}${body}\\end{${env}}$$`;
+            });
+            
+            // 3. 处理常见的LaTeX数学命令
+            const mathCommands = ['frac', 'sqrt', 'sum', 'int', 'lim', 'infty', 'alpha', 'beta', 'gamma', 'delta', 'theta', 'pi', 'sigma', 'phi', 'omega', 'forall', 'exists', 'in', 'subseteq', 'cup', 'cap', 'cdot', 'times', 'pm', 'leq', 'geq', 'neq', 'approx', 'equiv', 'rightarrow', 'leftarrow', 'Rightarrow', 'Leftarrow'];
+            
+            mathCommands.forEach(cmd => {
+                const regex = new RegExp(`\\\\${cmd}\\b`, 'g');
+                content = content.replace(regex, `$\\${cmd}$`);
+            });
+            
+            // 4. 处理带大括号的LaTeX命令
+            content = content.replace(/\\([a-zA-Z]+)\{([^}]*)\}/g, (match, cmd, arg) => {
+                return `$\\${cmd}{${arg}}$`;
+            });
+            
+            // 5. 识别并格式化Lean4代码
+            // 匹配theorem、lemma、def等结构
+            const leanPatterns = [
+                /(theorem\s+\w+[^:]*:[^:]*:=[\s\S]*?)(?=\n\s*(?:theorem|lemma|def|example|\n\n|$))/g,
+                /(lemma\s+\w+[^:]*:[^:]*:=[\s\S]*?)(?=\n\s*(?:theorem|lemma|def|example|\n\n|$))/g,
+                /(def\s+\w+[^:]*:[^:]*:=[\s\S]*?)(?=\n\s*(?:theorem|lemma|def|example|\n\n|$))/g,
+                /(example[^:]*:[^:]*:=[\s\S]*?)(?=\n\s*(?:theorem|lemma|def|example|\n\n|$))/g
+            ];
+            
+            leanPatterns.forEach(pattern => {
+                content = content.replace(pattern, (match) => {
+                    return `\`\`\`lean\n${match.trim()}\n\`\`\``;
+                });
+            });
+            
+            // 6. 识别Lean4证明策略
+            content = content.replace(/(by\s+[\s\S]*?)(?=\n\s*(?:theorem|lemma|def|example|\n\n|$))/g, (match) => {
+                if (!match.includes('```')) {
+                    return `\`\`\`lean\n${match.trim()}\n\`\`\``;
+                }
+                return match;
+            });
+            
+            // 7. 恢复代码块
+            content = content.replace(new RegExp(`${codeBlockMarker}(\\d+)${codeBlockMarker}`, 'g'), (match, index) => {
+                return codeBlocks[parseInt(index)];
+            });
+            
+            // 8. 清理多余的空行
+            content = content.replace(/\n{3,}/g, '\n\n');
+            
+            return content;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         function setStatus(type, text) {
@@ -463,6 +806,7 @@
             document.getElementById('statement').value = '';
             document.getElementById('outputSection').style.display = 'none';
             document.getElementById('outputContent').innerHTML = '';
+            markdownBuffer = ''; // 清空Markdown缓冲区
             
             if (eventSource) {
                 eventSource.close();
@@ -472,6 +816,26 @@
             resetButton();
         }
 
+        // 切换Markdown模式
+        function toggleMarkdownMode() {
+            isMarkdownMode = !isMarkdownMode;
+            const modeIcon = document.getElementById('modeIcon');
+            const modeText = document.getElementById('modeText');
+            
+            if (isMarkdownMode) {
+                modeIcon.textContent = '📝';
+                modeText.textContent = 'Markdown';
+            } else {
+                modeIcon.textContent = '📄';
+                modeText.textContent = '原始文本';
+            }
+            
+            // 重新渲染内容
+            if (markdownBuffer) {
+                renderMarkdown();
+            }
+        }
+        
         // 监听键盘事件
         document.getElementById('statement').addEventListener('keydown', function(e) {
             if (e.ctrlKey && e.key === 'Enter') {

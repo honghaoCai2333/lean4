@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lean4 数学证明助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #f7f7f8;
+            height: 100vh;
+            display: flex;
+        }
+
+        /* 侧边栏样式 */
+        .sidebar {
+            width: 260px;
+            background: #202123;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #565869;
+        }
+
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid #565869;
+        }
+
+        .new-chat-btn {
+            width: 100%;
+            padding: 12px;
+            background: #10a37f;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+
+        .new-chat-btn:hover {
+            background: #0d8f73;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .history-item {
+            padding: 10px 12px;
+            margin: 4px 0;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1.4;
+            transition: background-color 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .history-item:hover {
+            background: rgba(64, 65, 79, 0.5);
+        }
+
+        .history-item.active {
+            background: rgba(64, 65, 79, 0.7);
+            border-color: #10a37f;
+        }
+
+        .history-item-title {
+            font-weight: 500;
+            color: #ececf1;
+            margin-bottom: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .history-item-time {
+            font-size: 12px;
+            color: #8e8ea0;
+        }
+
+        /* 主聊天区域 */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+
+        .chat-header {
+            padding: 16px 24px;
+            background: white;
+            border-bottom: 1px solid #e5e5e5;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chat-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #343541;
+        }
+
+        .mode-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: #f7f7f8;
+            border: 1px solid #d9d9e3;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #565869;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .message {
+            display: flex;
+            gap: 16px;
+            max-width: 100%;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.assistant {
+            justify-content: flex-start;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background: #10a37f;
+            color: white;
+        }
+
+        .message.assistant .message-avatar {
+            background: #ab68ff;
+            color: white;
+        }
+
+        .message-content {
+            flex: 1;
+            max-width: 65%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            line-height: 1.6;
+        }
+
+        .message.user .message-content {
+            background: #f1f5f9;
+            color: #1f2937;
+        }
+
+        .message.assistant .message-content {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            color: #1f2937;
+        }
+
+        .welcome-screen {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #8e8ea0;
+            text-align: center;
+        }
+
+        .welcome-screen h2 {
+            font-size: 32px;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #10a37f 0%, #ab68ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .welcome-screen p {
+            font-size: 16px;
+            margin-bottom: 32px;
+        }
+
+        .example-prompts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 12px;
+            max-width: 600px;
+        }
+
+        .example-prompt {
+            padding: 16px;
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .example-prompt:hover {
+            border-color: #10a37f;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .example-prompt-title {
+            font-weight: 500;
+            color: #343541;
+            margin-bottom: 4px;
+        }
+
+        .example-prompt-desc {
+            font-size: 14px;
+            color: #8e8ea0;
+        }
+
+        /* 输入区域 */
+        .input-area {
+            padding: 24px;
+            background: white;
+            border-top: 1px solid #e5e5e5;
+        }
+
+        .input-container {
+            position: relative;
+            max-width: 768px;
+            margin: 0 auto;
+        }
+
+        .input-box {
+            width: 100%;
+            min-height: 50px;
+            max-height: 200px;
+            padding: 12px 50px 12px 16px;
+            border: 1px solid #d9d9e3;
+            border-radius: 12px;
+            font-size: 16px;
+            line-height: 1.5;
+            resize: none;
+            font-family: inherit;
+            background: #f7f7f8;
+        }
+
+        .input-box:focus {
+            outline: none;
+            border-color: #10a37f;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.1);
+        }
+
+        .send-btn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 32px;
+            height: 32px;
+            background: #10a37f;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+
+        .send-btn:hover:not(:disabled) {
+            background: #0d8f73;
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Markdown 和数学公式样式 */
+        .markdown-body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #1f2937;
+        }
+
+        .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+            margin: 16px 0 12px 0;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+
+        .markdown-body code {
+            padding: 2px 6px;
+            background-color: rgba(175, 184, 193, 0.2);
+            border-radius: 3px;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .markdown-body pre {
+            padding: 16px;
+            background-color: #f8f9fa;
+            border: 1px solid #e1e4e8;
+            border-radius: 8px;
+            margin: 12px 0;
+            overflow-x: auto;
+        }
+
+        .markdown-body pre code {
+            background-color: transparent;
+            padding: 0;
+            font-size: 14px;
+            line-height: 1.45;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                position: fixed;
+                left: -100%;
+                transition: left 0.3s;
+                z-index: 100;
+            }
+
+            .sidebar.open {
+                left: 0;
+            }
+
+            .main-content {
+                width: 100%;
+            }
+
+            .message-content {
+                max-width: 85%;
+            }
+
+            .example-prompts {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 加载动画 */
+        .typing-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 0;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #8e8ea0;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+                opacity: 0.5;
+            }
+            30% {
+                transform: translateY(-10px);
+                opacity: 1;
+            }
+        }
+    </style>
+    <!-- 引入marked.js用于Markdown解析 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- 引入highlight.js用于代码高亮 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+    <!-- 引入MathJax用于数学公式渲染 -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true,
+                processEnvironments: true,
+                tags: 'ams'
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <!-- 侧边栏 -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <button class="new-chat-btn" onclick="createNewChat()">
+                ✨ 新建证明
+            </button>
+        </div>
+        <div class="sidebar-content" id="historyList">
+            <!-- 历史记录将在这里动态加载 -->
+        </div>
+    </div>
+
+    <!-- 主聊天区域 -->
+    <div class="main-content">
+        <div class="chat-header">
+            <h1 class="chat-title">Lean4 数学证明助手</h1>
+            <div class="mode-toggle" onclick="toggleMarkdownMode()" title="切换显示模式">
+                <span id="modeIcon">📝</span>
+                <span id="modeText">Markdown</span>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <!-- 欢迎屏幕 -->
+            <div class="welcome-screen" id="welcomeScreen">
+                <h2>欢迎使用 Lean4 证明助手</h2>
+                <p>输入数学命题，我将帮您生成严格的 Lean4 形式化证明</p>
+                
+                <div class="example-prompts">
+                    <div class="example-prompt" onclick="setExample('对于所有自然数n，n + 0 = n')">
+                        <div class="example-prompt-title">自然数加零</div>
+                        <div class="example-prompt-desc">证明：对于所有自然数n，n + 0 = n</div>
+                    </div>
+                    <div class="example-prompt" onclick="setExample('证明勾股定理：在直角三角形中，a² + b² = c²')">
+                        <div class="example-prompt-title">勾股定理</div>
+                        <div class="example-prompt-desc">经典几何定理的形式化证明</div>
+                    </div>
+                    <div class="example-prompt" onclick="setExample('如果a > b且b > c，则a > c')">
+                        <div class="example-prompt-title">传递性</div>
+                        <div class="example-prompt-desc">证明大于关系的传递性质</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <div class="input-container">
+                <textarea 
+                    id="inputBox" 
+                    class="input-box" 
+                    placeholder="输入您要证明的数学命题..."
+                    rows="1"></textarea>
+                <button id="sendBtn" class="send-btn" onclick="sendMessage()">
+                    <span id="sendIcon">→</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let currentSessionId = null;
+        let isProcessing = false;
+        let isMarkdownMode = true;
+        let sessions = [];
+        
+        // 配置marked选项
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            highlight: function(code, lang) {
+                if (lang && hljs.getLanguage(lang)) {
+                    try {
+                        return hljs.highlight(code, { language: lang }).value;
+                    } catch (e) {}
+                }
+                return hljs.highlightAuto(code).value;
+            }
+        });
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadHistorySessions();
+            setupInputBox();
+        });
+
+        // 加载历史会话
+        async function loadHistorySessions() {
+            try {
+                const response = await fetch('/api/sessions');
+                const data = await response.json();
+                sessions = data.sessions || [];
+                renderHistoryList();
+            } catch (error) {
+                console.error('加载历史会话失败:', error);
+            }
+        }
+
+        // 渲染历史会话列表
+        function renderHistoryList() {
+            const historyList = document.getElementById('historyList');
+            
+            if (sessions.length === 0) {
+                historyList.innerHTML = '<div style="padding: 16px; color: #8e8ea0; text-align: center;">暂无历史记录</div>';
+                return;
+            }
+
+            historyList.innerHTML = sessions.map((session, index) => {
+                const date = new Date(session.created_at).toLocaleDateString('zh-CN');
+                const isActive = session.id === currentSessionId;
+                
+                return `
+                    <div class="history-item ${isActive ? 'active' : ''}" 
+                         onclick="loadSession(${session.id})">
+                        <div class="history-item-title">${session.title}</div>
+                        <div class="history-item-time">${date}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 加载特定会话
+        async function loadSession(sessionId) {
+            try {
+                currentSessionId = sessionId;
+                renderHistoryList();
+                
+                const response = await fetch(`/api/sessions/${sessionId}`);
+                const data = await response.json();
+                const session = data.session;
+                
+                displayChatSession(session);
+                hideWelcomeScreen();
+            } catch (error) {
+                console.error('加载会话失败:', error);
+            }
+        }
+
+        // 显示聊天会话
+        function displayChatSession(session) {
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.innerHTML = '';
+
+            // 用户消息
+            addMessage('user', session.statement);
+
+            // 助手回复
+            if (session.proof_result) {
+                addMessage('assistant', session.proof_result);
+            }
+        }
+
+        // 添加消息到聊天区域
+        function addMessage(role, content, isStreaming = false) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            
+            const avatar = role === 'user' ? '你' : 'AI';
+            const processedContent = isMarkdownMode ? marked.parse(preprocessContent(content)) : escapeHtml(content);
+            
+            messageDiv.innerHTML = `
+                <div class="message-avatar">${avatar}</div>
+                <div class="message-content markdown-body" ${isStreaming ? 'id="streamingContent"' : ''}>
+                    ${processedContent}
+                </div>
+            `;
+            
+            chatMessages.appendChild(messageDiv);
+            
+            // 应用代码高亮和数学公式渲染
+            if (isMarkdownMode) {
+                messageDiv.querySelectorAll('pre code').forEach((block) => {
+                    if (block.textContent.includes('theorem ') || 
+                        block.textContent.includes('lemma ') || 
+                        block.textContent.includes('def ') ||
+                        block.textContent.includes('by ')) {
+                        block.className = 'language-lean';
+                    }
+                    hljs.highlightElement(block);
+                });
+                
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                    window.MathJax.typesetPromise([messageDiv]).catch((err) => console.log(err));
+                }
+            }
+            
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return messageDiv;
+        }
+
+        // 创建新聊天
+        function createNewChat() {
+            currentSessionId = null;
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.innerHTML = `
+                <div class="welcome-screen" id="welcomeScreen">
+                    <h2>开始新的证明</h2>
+                    <p>输入您要证明的数学命题</p>
+                </div>
+            `;
+            document.getElementById('inputBox').focus();
+        }
+
+        // 设置示例命题
+        function setExample(text) {
+            document.getElementById('inputBox').value = text;
+            document.getElementById('inputBox').focus();
+        }
+
+        // 发送消息
+        async function sendMessage() {
+            const inputBox = document.getElementById('inputBox');
+            const statement = inputBox.value.trim();
+            
+            if (!statement || isProcessing) return;
+            
+            hideWelcomeScreen();
+            isProcessing = true;
+            updateSendButton(true);
+            
+            inputBox.value = '';
+            inputBox.style.height = 'auto';
+            
+            try {
+                // 如果是新对话，先创建会话
+                if (!currentSessionId) {
+                    const createResponse = await fetch('/api/sessions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ statement })
+                    });
+                    
+                    const createData = await createResponse.json();
+                    currentSessionId = createData.session.id;
+                    
+                    // 重新加载历史列表
+                    await loadHistorySessions();
+                }
+                
+                // 添加用户消息
+                addMessage('user', statement);
+                
+                // 添加助手消息（流式）
+                const assistantMessage = addMessage('assistant', '', true);
+                const streamingContent = document.getElementById('streamingContent');
+                
+                // 添加加载动画
+                streamingContent.innerHTML = `
+                    <div class="typing-indicator">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                `;
+                
+                // 开始流式证明
+                const response = await fetch(`/api/sessions/${currentSessionId}/prove`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                let fullContent = '';
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                if (data.type === 'proof_chunk' || data.type === 'explanation_chunk' || data.type === 'refined_chunk') {
+                                    fullContent += data.content;
+                                    updateStreamingContent(streamingContent, fullContent);
+                                } else if (data.type === 'status' || data.type === 'proof_start' || data.type === 'explanation_start') {
+                                    fullContent += data.content + '\n';
+                                    updateStreamingContent(streamingContent, fullContent);
+                                }
+                            } catch (e) {
+                                console.error('解析数据失败:', e);
+                            }
+                        }
+                    }
+                }
+                
+            } catch (error) {
+                console.error('发送消息失败:', error);
+                const streamingContent = document.getElementById('streamingContent');
+                if (streamingContent) {
+                    streamingContent.innerHTML = `<p style="color: #ef4444;">错误: ${error.message}</p>`;
+                }
+            } finally {
+                isProcessing = false;
+                updateSendButton(false);
+            }
+        }
+
+        // 更新流式内容
+        function updateStreamingContent(element, content) {
+            if (!element) return;
+            
+            const processedContent = isMarkdownMode ? marked.parse(preprocessContent(content)) : escapeHtml(content);
+            element.innerHTML = processedContent;
+            
+            if (isMarkdownMode) {
+                element.querySelectorAll('pre code').forEach((block) => {
+                    if (block.textContent.includes('theorem ') || 
+                        block.textContent.includes('lemma ') || 
+                        block.textContent.includes('def ') ||
+                        block.textContent.includes('by ')) {
+                        block.className = 'language-lean';
+                    }
+                    hljs.highlightElement(block);
+                });
+                
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                    window.MathJax.typesetPromise([element]).catch((err) => console.log(err));
+                }
+            }
+            
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // 预处理内容（Markdown和LaTeX）
+        function preprocessContent(content) {
+            // 保护已有的代码块
+            const codeBlockMarker = '___CODEBLOCK___';
+            const codeBlocks = [];
+            content = content.replace(/```[\s\S]*?```/g, (match) => {
+                codeBlocks.push(match);
+                return `${codeBlockMarker}${codeBlocks.length - 1}${codeBlockMarker}`;
+            });
+            
+            // 处理LaTeX环境
+            content = content.replace(/\\begin\{([^}]+)\}([\s\S]*?)\\end\{\1\}/g, (match, env, body) => {
+                return `$$\\begin{${env}}${body}\\end{${env}}$$`;
+            });
+            
+            // 处理常见的LaTeX数学命令
+            const mathCommands = ['frac', 'sqrt', 'sum', 'int', 'lim', 'infty', 'alpha', 'beta', 'gamma', 'delta', 'theta', 'pi', 'sigma', 'phi', 'omega'];
+            mathCommands.forEach(cmd => {
+                const regex = new RegExp(`\\\\${cmd}\\b`, 'g');
+                content = content.replace(regex, `$\\${cmd}$`);
+            });
+            
+            // 处理带大括号的LaTeX命令
+            content = content.replace(/\\([a-zA-Z]+)\{([^}]*)\}/g, (match, cmd, arg) => {
+                return `$\\${cmd}{${arg}}$`;
+            });
+            
+            // 识别Lean4代码
+            const leanPatterns = [
+                /(theorem\s+\w+[^:]*:[^:]*:=[\s\S]*?)(?=\n\s*(?:theorem|lemma|def|example|\n\n|$))/g,
+                /(lemma\s+\w+[^:]*:[^:]*:=[\s\S]*?)(?=\n\s*(?:theorem|lemma|def|example|\n\n|$))/g,
+                /(def\s+\w+[^:]*:[^:]*:=[\s\S]*?)(?=\n\s*(?:theorem|lemma|def|example|\n\n|$))/g
+            ];
+            
+            leanPatterns.forEach(pattern => {
+                content = content.replace(pattern, (match) => {
+                    return `\`\`\`lean\n${match.trim()}\n\`\`\``;
+                });
+            });
+            
+            // 恢复代码块
+            content = content.replace(new RegExp(`${codeBlockMarker}(\\d+)${codeBlockMarker}`, 'g'), (match, index) => {
+                return codeBlocks[parseInt(index)];
+            });
+            
+            return content;
+        }
+
+        // 切换Markdown模式
+        function toggleMarkdownMode() {
+            isMarkdownMode = !isMarkdownMode;
+            const modeIcon = document.getElementById('modeIcon');
+            const modeText = document.getElementById('modeText');
+            
+            if (isMarkdownMode) {
+                modeIcon.textContent = '📝';
+                modeText.textContent = 'Markdown';
+            } else {
+                modeIcon.textContent = '📄';
+                modeText.textContent = '原始文本';
+            }
+            
+            // 重新渲染当前会话
+            if (currentSessionId) {
+                loadSession(currentSessionId);
+            }
+        }
+
+        // 更新发送按钮状态
+        function updateSendButton(processing) {
+            const sendBtn = document.getElementById('sendBtn');
+            const sendIcon = document.getElementById('sendIcon');
+            
+            sendBtn.disabled = processing;
+            sendIcon.textContent = processing ? '⏸' : '→';
+        }
+
+        // 隐藏欢迎屏幕
+        function hideWelcomeScreen() {
+            const welcomeScreen = document.getElementById('welcomeScreen');
+            if (welcomeScreen) {
+                welcomeScreen.remove();
+            }
+        }
+
+        // 设置输入框
+        function setupInputBox() {
+            const inputBox = document.getElementById('inputBox');
+            
+            // 自动调整高度
+            inputBox.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+            });
+            
+            // Enter发送消息
+            inputBox.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+        }
+
+        // 转义HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

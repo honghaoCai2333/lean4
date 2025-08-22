@@ -41,14 +41,14 @@ class ProofProcessor:
         result_parts = []
         result_parts.append(f"**输入的证明陈述:**\n{proof_statement}\n")
         
-        # 检查Lean4是否安装
-        if not self.lean_executor.check_lean_installation():
-            result_parts.append("**警告:** Lean4未安装，将只生成证明代码而无法验证。")
-            result_parts.append("请运行以下命令安装Lean4:")
-            result_parts.append("```bash")
-            result_parts.append("curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh")
-            result_parts.append("source ~/.profile")
-            result_parts.append("```\n")
+        # # 检查Lean4是否安装
+        # if not self.lean_executor.check_lean_installation():
+        #     result_parts.append("**警告:** Lean4未安装，将只生成证明代码而无法验证。")
+        #     result_parts.append("请运行以下命令安装Lean4:")
+        #     result_parts.append("```bash")
+        #     result_parts.append("curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh")
+        #     result_parts.append("source ~/.profile")
+        #     result_parts.append("```\n")
         
         # 生成初始证明
         result_parts.append("**正在生成Lean4证明代码...**\n")
@@ -61,7 +61,7 @@ class ProofProcessor:
             result_parts.append(lean_code)
             result_parts.append("```\n")
             
-            # 如果Lean4已安装，尝试验证证明
+            # 尝试验证证明
             if self.lean_executor.check_lean_installation():
                 success, verification_result = self._verify_and_refine_proof(lean_code)
                 result_parts.append(verification_result)
@@ -93,7 +93,7 @@ class ProofProcessor:
             is_valid, message = self.lean_executor.verify_proof(current_code)
             
             if is_valid:
-                result_parts.append("✅ 证明验证成功!")
+                result_parts.append(" 证明验证成功!")
                 if attempt > 0:
                     result_parts.append("\n**最终修正后的代码:**")
                     result_parts.append("```lean")
@@ -101,7 +101,7 @@ class ProofProcessor:
                     result_parts.append("```")
                 return True, "\n".join(result_parts)
             else:
-                result_parts.append(f"❌ 验证失败: {message}")
+                result_parts.append(f" 验证失败: {message}")
                 
                 # 如果不是最后一次尝试，则尝试修正
                 if attempt < self.max_attempts - 1:
@@ -115,7 +115,7 @@ class ProofProcessor:
                         result_parts.append(f"修正过程中出错: {str(e)}")
                         break
         
-        result_parts.append(f"\n❌ 经过{self.max_attempts}次尝试后仍无法验证证明")
+        result_parts.append(f"\n 经过{self.max_attempts}次尝试后仍无法验证证明")
         return False, "\n".join(result_parts)
     
     def validate_syntax_only(self, lean_code: str) -> Tuple[bool, str]:
