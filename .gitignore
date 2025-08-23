@@ -45,4 +45,4 @@ lakefile.lock
 
 # Temporary files
 *.tmp
-tmp*
+tmp*/.lake

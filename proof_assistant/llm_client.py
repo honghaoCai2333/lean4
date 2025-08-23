@@ -44,8 +44,6 @@ class LLMClient:
         prompt = prompt_template.format(proof_statement=proof_statement)
         
         try:
-            print(f"调用模型: {self.model}")
-            print(f"API基础URL: {self.base_url}")
             
             response = completion(
                 model=self.model,
