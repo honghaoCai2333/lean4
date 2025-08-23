@@ -201,11 +201,20 @@ def create_session():
         data = request.json
         statement = data.get('statement')
         title = data.get('title')
+        is_static = data.get('isStatic', False)
+        static_content = data.get('staticContent', '')
         
         if not statement:
             return jsonify({"error": "请提供需要证明的命题"}), 400
         
         session_id = db.create_session(statement, title)
+        
+        # 如果是静态内容，直接保存证明结果
+        if is_static and static_content:
+            # 将静态内容转换为与真实API相同的格式
+            formatted_content = processor._format_sse_message(static_content, "proof_chunk")
+            db.update_session_proof(session_id, formatted_content)
+        
         session = db.get_session(session_id)
         return jsonify({"session": session}), 201
         

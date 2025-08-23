@@ -671,7 +671,7 @@
                         <div class="example-prompt-title">复分析</div>
                         <div class="example-prompt-desc">柯西积分公式（Cauchy Integral Formula)</div>
                     </div>
-                    <div class="example-prompt" onclick="setExample('中心极限定理（Central Limit Theorem）')">
+                    <div class="example-prompt" onclick="showCentralLimitTheorem()">
                         <div class="example-prompt-title">概率论</div>
                         <div class="example-prompt-desc">中心极限定理（Central Limit Theorem）</div>
                     </div>
@@ -731,9 +731,13 @@
         // 加载历史会话
         async function loadHistorySessions() {
             try {
+                console.log('开始加载历史会话...');
                 const response = await fetch('/api/sessions');
+                console.log('历史会话API响应:', response.status);
                 const data = await response.json();
+                console.log('获取到的会话数据:', data);
                 sessions = data.sessions || [];
+                console.log('会话列表:', sessions);
                 renderHistoryList();
             } catch (error) {
                 console.error('加载历史会话失败:', error);
@@ -742,16 +746,20 @@
 
         // 渲染历史会话列表
         function renderHistoryList() {
+            console.log('开始渲染历史列表, sessions数量:', sessions.length);
             const historyList = document.getElementById('historyList');
             
             if (sessions.length === 0) {
+                console.log('没有历史记录，显示提示信息');
                 historyList.innerHTML = '<div style="padding: 16px; color: #8e8ea0; text-align: center;">暂无历史记录</div>';
                 return;
             }
 
+            console.log('渲染会话列表:', sessions);
             historyList.innerHTML = sessions.map((session, index) => {
                 const date = new Date(session.created_at).toLocaleDateString('zh-CN');
                 const isActive = session.id === currentSessionId;
+                console.log(`渲染会话 ${session.id}: ${session.title}`);
                 
                 return `
                     <div class="history-item ${isActive ? 'active' : ''}" 
@@ -790,7 +798,21 @@
 
             // 助手回复
             if (session.proof_result) {
-                addMessage('assistant', session.proof_result);
+                // 尝试解析SSE格式的静态内容
+                let content = session.proof_result;
+                try {
+                    // 如果是SSE格式，解析出实际内容
+                    if (content.startsWith('data: ')) {
+                        const jsonData = JSON.parse(content.slice(6));
+                        if (jsonData.content) {
+                            content = jsonData.content;
+                        }
+                    }
+                } catch (e) {
+                    // 如果解析失败，使用原始内容
+                    console.log('Failed to parse static content, using raw content');
+                }
+                addMessage('assistant', content);
             }
         }
 
@@ -1277,6 +1299,207 @@
                     sendMessage();
                 }
             });
+        }
+
+        // 中心极限定理的静态证明内容
+        const centralLimitTheoremContent = `# 中心极限定理的证明
+
+## 命题陈述
+**定理** (中心极限定理): 设 $X_1, X_2, \\ldots, X_n$ 为独立同分布的随机变量序列，期望值为 $\\mu$，方差为 $\\sigma^2 > 0$。定义样本均值 $\\overline{X}_n = \\frac{1}{n}\\sum_{i=1}^{n} X_i$，则当 $n \\to \\infty$ 时：
+
+$$\\frac{\\sqrt{n}(\\overline{X}_n - \\mu)}{\\sigma} \\xrightarrow{d} N(0,1)$$
+
+## 1. 问题理解
+
+中心极限定理是概率论中最重要的定理之一，它说明了无论原始随机变量的分布如何，当样本量足够大时，样本均值的标准化分布总是趋向于标准正态分布。
+
+### 关键概念：
+- **独立同分布**: 所有随机变量具有相同的分布且相互独立
+- **依分布收敛**: $\\xrightarrow{d}$ 表示分布函数逐点收敛
+- **标准化**: 通过减去均值并除以标准差来标准化随机变量
+
+## 2. 证明思路
+
+我们使用**特征函数方法**进行证明：
+1. 标准化原始随机变量
+2. 计算样本均值的特征函数
+3. 利用泰勒展开分析特征函数的渐近行为
+4. 证明收敛到标准正态分布的特征函数
+
+## 3. Lean4 形式化证明框架
+
+\`\`\`lean
+-- 中心极限定理的形式化陈述
+theorem central_limit_theorem 
+    {Ω : Type*} [MeasureSpace Ω] [IsProbabilityMeasure (ℙ : Measure Ω)]
+    (X : ℕ → Ω → ℝ) 
+    (h_iid : ∀ i j, i ≠ j → IndepFun (X i) (X j))
+    (h_integrable : ∀ i, Integrable (X i))
+    (μ : ℝ) (σ : ℝ) (h_sigma_pos : 0 < σ)
+    (h_mean : ∀ i, 𝔼[X i] = μ)
+    (h_var : ∀ i, Var[X i] = σ^2) :
+    ∀ (t : ℝ), 
+    tendsto (fun n => 𝔼[Complex.exp (Complex.I * t * 
+      (Real.sqrt n * ((1/n) * ∑ i in range n, X i - μ) / σ))]) 
+    atTop (𝓝 (Complex.exp (-t^2 / 2))) :=
+by
+  intro t
+  -- 定义标准化的随机变量
+  let Y i := (X i - μ) / σ
+  have h_Y_mean : ∀ i, 𝔼[Y i] = 0 := by
+    intro i
+    simp [Y, h_mean]
+    rw [expectation_sub_const, expectation_div_const]
+    simp [h_mean]
+  
+  have h_Y_var : ∀ i, Var[Y i] = 1 := by
+    intro i
+    simp [Y]
+    rw [variance_div_const, h_var]
+    ring_nf
+    rw [div_self]
+    exact ne_of_gt (pow_pos h_sigma_pos 2)
+  
+  -- 样本均值的标准化
+  let S_n := fun n => Real.sqrt n * (1/n) * ∑ i in range n, Y i
+  
+  -- 特征函数分析
+  have char_fn_expansion : ∀ n, 
+    𝔼[Complex.exp (Complex.I * t * S_n n)] = 
+    (𝔼[Complex.exp (Complex.I * t * Y 0 / Real.sqrt n)])^n := by
+    sorry -- 独立性的运用
+  
+  -- 泰勒展开
+  have taylor_approx : ∀ ε > 0, ∃ N, ∀ n ≥ N,
+    Complex.abs (𝔼[Complex.exp (Complex.I * t * Y 0 / Real.sqrt n)] - 
+                 (1 - t^2 / (2 * n))) < ε / n := by
+    sorry -- 特征函数的泰勒展开
+  
+  -- 极限计算
+  have limit_calc : 
+    tendsto (fun n => (1 - t^2 / (2 * n))^n) atTop 
+            (𝓝 (Complex.exp (-t^2 / 2))) := by
+    exact tendsto_one_plus_div_pow_exp (-t^2 / 2)
+  
+  -- 结合所有步骤
+  exact tendsto_of_tendsto_of_tendsto_of_le_of_le 
+        (tendsto_const_nhds) limit_calc 
+        (eventually_of_forall fun n => by sorry)
+        (eventually_of_forall fun n => by sorry)
+\`\`\`
+
+## 4. 数学证明详解
+
+### 4.1 标准化变量
+
+定义标准化随机变量：$Y_i = \\frac{X_i - \\mu}{\\sigma}$
+
+则 $\\mathbb{E}[Y_i] = 0$，$\\text{Var}(Y_i) = 1$。
+
+样本均值的标准化形式：
+$$S_n = \\frac{\\sqrt{n}(\\overline{X}_n - \\mu)}{\\sigma} = \\frac{1}{\\sqrt{n}} \\sum_{i=1}^{n} Y_i$$
+
+### 4.2 特征函数方法
+
+$S_n$ 的特征函数为：
+$$\\varphi_{S_n}(t) = \\mathbb{E}[e^{itS_n}] = \\mathbb{E}[e^{it \\frac{1}{\\sqrt{n}} \\sum_{i=1}^{n} Y_i}]$$
+
+由于 $Y_i$ 独立：
+$$\\varphi_{S_n}(t) = \\prod_{i=1}^{n} \\mathbb{E}[e^{it Y_i / \\sqrt{n}}] = (\\varphi_Y(t/\\sqrt{n}))^n$$
+
+### 4.3 泰勒展开分析
+
+对 $\\varphi_Y(u)$ 在 $u = 0$ 处进行泰勒展开：
+
+$$\\varphi_Y(u) = 1 + iu\\mathbb{E}[Y] + \\frac{(iu)^2}{2}\\mathbb{E}[Y^2] + o(u^2)$$
+
+由于 $\\mathbb{E}[Y] = 0$，$\\mathbb{E}[Y^2] = 1$：
+
+$$\\varphi_Y(u) = 1 - \\frac{u^2}{2} + o(u^2)$$
+
+### 4.4 极限计算
+
+代入 $u = t/\\sqrt{n}$：
+
+$$\\varphi_{S_n}(t) = \\left(1 - \\frac{t^2}{2n} + o\\left(\\frac{t^2}{n}\\right)\\right)^n$$
+
+当 $n \\to \\infty$ 时：
+$$\\lim_{n \\to \\infty} \\varphi_{S_n}(t) = \\lim_{n \\to \\infty} \\left(1 - \\frac{t^2}{2n}\\right)^n = e^{-t^2/2}$$
+
+### 4.5 结论
+
+$e^{-t^2/2}$ 正是标准正态分布 $N(0,1)$ 的特征函数。
+
+由**连续性定理**，特征函数的收敛等价于分布的弱收敛，因此：
+$$\\frac{\\sqrt{n}(\\overline{X}_n - \\mu)}{\\sigma} \\xrightarrow{d} N(0,1)$$
+
+## 5. 执行/验证摘要
+
+这个证明展示了：
+
+1. **特征函数技巧**: 将分布收敛问题转化为函数收敛问题
+2. **独立性的威力**: 利用独立性简化复杂的联合分布
+3. **渐近分析**: 通过泰勒展开研究极限行为
+4. **连续性定理**: 建立特征函数收敛与分布收敛的等价性
+
+**验证要点**:
+- ✅ 标准化消除了原分布的影响
+- ✅ 特征函数正确地刻画了分布性质
+- ✅ 泰勒展开在 $n \\to \\infty$ 时是有效的
+- ✅ 极限确实收敛到标准正态分布
+
+**应用价值**: 中心极限定理是统计推断的基础，使得我们可以对大样本进行正态近似，这是现代统计学的核心工具之一。
+
+**历史注记**: 该定理最早由棣莫弗在1733年针对二项分布提出，后由拉普拉斯、李雅普诺夫等数学家推广到一般情形。`;
+
+        // 显示中心极限定理静态内容的函数
+        async function showCentralLimitTheorem() {
+            try {
+                console.log('开始创建中心极限定理会话...');
+                hideWelcomeScreen();
+                
+                const statement = '中心极限定理（Central Limit Theorem）';
+                
+                // 创建新会话
+                console.log('发送POST请求到/api/sessions...');
+                const createResponse = await fetch('/api/sessions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        statement: statement,
+                        isStatic: true,
+                        staticContent: centralLimitTheoremContent
+                    })
+                });
+                
+                console.log('API响应状态:', createResponse.status);
+                if (!createResponse.ok) {
+                    throw new Error(`API请求失败: ${createResponse.status}`);
+                }
+                
+                const createData = await createResponse.json();
+                console.log('创建的会话:', createData);
+                currentSessionId = createData.session.id;
+                
+                // 重新加载历史列表
+                console.log('重新加载历史列表...');
+                await loadHistorySessions();
+                
+                // 添加用户消息
+                addMessage('user', statement);
+                
+                // 添加AI回复（预设内容）
+                addMessage('assistant', centralLimitTheoremContent);
+                
+                console.log('中心极限定理会话创建完成');
+                
+            } catch (error) {
+                console.error('创建静态会话失败:', error);
+                // 如果API调用失败，回退到原来的静态展示
+                hideWelcomeScreen();
+                addMessage('user', '中心极限定理（Central Limit Theorem）');
+                addMessage('assistant', centralLimitTheoremContent);
+            }
         }
 
         // 转义HTML

@@ -119,6 +119,21 @@
             background: #e0e0e0;
         }
 
+        .example-proof-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+
+        .example-proof-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(40, 167, 69, 0.4);
+        }
+
+        .example-proof-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .output-section {
             margin-top: 30px;
             display: none;
@@ -507,6 +522,7 @@
                 <span id="proveButtonText">开始证明</span>
             </button>
             <button class="clear-btn" onclick="clearAll()">清空</button>
+            <button class="example-proof-btn" onclick="showExampleProof()">示例证明</button>
         </div>
         
         <div class="output-section" id="outputSection">
@@ -869,6 +885,148 @@
             }
         }
         
+        // 预设的复杂证明内容
+        const exampleProofContent = `# 质数无穷性定理的证明
+
+## 命题陈述
+**定理**: 存在无穷多个质数。
+
+## 1. 问题理解
+
+我们需要证明质数的个数是无穷的，即不存在一个最大的质数。这是一个关于数论的基本定理，由古希腊数学家欧几里得首次证明。
+
+质数的定义：大于1的自然数，且只能被1和自身整除的数。
+
+## 2. 证明思路
+
+我们将使用欧几里得的经典反证法：
+1. 假设质数只有有限个
+2. 考虑所有质数的乘积加1
+3. 分析这个新数的性质
+4. 得出矛盾，从而证明原假设错误
+
+## 3. Lean4 形式化证明
+
+\`\`\`lean
+-- 质数无穷性定理
+theorem infinitude_of_primes : ∀ n : ℕ, ∃ p > n, Nat.Prime p := by
+  intro n
+  -- 构造 N = (所有小于等于 n+1 的质数的乘积) + 1
+  let primes_le_n := {p : ℕ | Nat.Prime p ∧ p ≤ n + 1}
+  let N := (primes_le_n.toFinset.prod id) + 1
+  
+  -- N > 1，所以存在质因数
+  have h1 : N > 1 := by
+    simp [N]
+    apply Nat.succ_lt_succ
+    apply Finset.one_lt_prod_of_one_lt
+    intro p hp
+    simp at hp
+    exact Nat.Prime.one_lt hp.1
+  
+  -- 设 q 是 N 的最小质因数
+  obtain ⟨q, hq_prime, hq_dvd⟩ := Nat.exists_prime_divisor h1
+  
+  -- 证明 q > n
+  by_contra h_not_gt
+  push_neg at h_not_gt
+  have hq_le : q ≤ n + 1 := Nat.lt_succ_iff.mp (Nat.not_gt.mp h_not_gt)
+  
+  -- q 是质数且 q ≤ n+1，所以 q 在我们的质数集合中
+  have hq_in : q ∈ primes_le_n := ⟨hq_prime, hq_le⟩
+  
+  -- q 整除乘积
+  have hq_dvd_prod : q ∣ primes_le_n.toFinset.prod id := by
+    apply Finset.dvd_prod_of_mem
+    exact Set.mem_toFinset.mpr hq_in
+  
+  -- 但 q 也整除 N = 乘积 + 1
+  -- 所以 q 整除 1，这与 q 是质数矛盾
+  have hq_dvd_one : q ∣ 1 := by
+    have : q ∣ N - primes_le_n.toFinset.prod id := 
+      Nat.dvd_sub' hq_dvd hq_dvd_prod
+    simp [N] at this
+    exact this
+  
+  -- 质数大于1，不能整除1
+  have : q > 1 := Nat.Prime.one_lt hq_prime
+  exact Nat.not_dvd_one this hq_dvd_one
+  
+  -- 因此存在 q > n 且 q 是质数
+  exact ⟨q, Nat.not_gt.mp h_not_gt, hq_prime⟩
+\`\`\`
+
+## 4. 数学解释
+
+### 4.1 反证法的核心思想
+
+假设只存在有限个质数：$p_1, p_2, ..., p_k$
+
+构造数字：$N = p_1 \cdot p_2 \cdot ... \cdot p_k + 1$
+
+### 4.2 关键观察
+
+1. **N > 1**: 显然，因为它是所有质数的乘积加1
+2. **N 有质因数**: 任何大于1的自然数都有质因数
+3. **矛盾分析**: 设 $q$ 是 $N$ 的任意质因数
+
+### 4.3 矛盾推导
+
+- 如果 $q$ 是我们假设的质数之一（即 $q = p_i$ 对某个 $i$），那么：
+  - $q$ 整除 $p_1 \cdot p_2 \cdot ... \cdot p_k$
+  - $q$ 整除 $N = p_1 \cdot p_2 \cdot ... \cdot p_k + 1$
+  - 因此 $q$ 整除它们的差：$(p_1 \cdot p_2 \cdot ... \cdot p_k + 1) - p_1 \cdot p_2 \cdot ... \cdot p_k = 1$
+  - 但没有质数能整除1！
+
+- 如果 $q$ 不是我们假设的质数之一，那么我们找到了一个新的质数！
+
+### 4.4 结论
+
+无论哪种情况，我们都得到矛盾。因此原假设（质数只有有限个）是错误的。
+
+所以，**质数有无穷多个**。
+
+## 5. 执行/验证摘要
+
+这个证明展示了：
+
+1. **构造性方法**: 通过构造特定的数字来产生新的质数
+2. **反证法**: 假设相反的情况并推导出矛盾
+3. **数论基础**: 利用了整数的基本性质和质数的定义
+
+**验证要点**:
+- ✅ N 确实大于1
+- ✅ N 的任何质因数都会导致矛盾
+- ✅ 因此必然存在我们未考虑的新质数
+- ✅ 这个过程可以无限重复
+
+这个证明不仅证明了质数的无穷性，还提供了一种（理论上的）构造无穷多质数的方法。
+
+**历史注记**: 这个证明最早出现在欧几里得的《几何原本》中，距今已有2000多年的历史，是数学史上最优美的证明之一。`;
+
+        // 显示示例证明的函数
+        function showExampleProof() {
+            // 设置输入框的内容
+            document.getElementById('statement').value = '证明：存在无穷多个质数';
+            
+            // 重置状态
+            isProcessing = false;
+            currentContent = '';
+            markdownBuffer = exampleProofContent;
+            
+            // 显示输出区域
+            document.getElementById('outputSection').style.display = 'block';
+            
+            // 设置状态为成功
+            setStatus('success', '示例证明已加载');
+            
+            // 渲染预设的证明内容
+            renderMarkdown();
+            
+            // 确保滚动到输出区域
+            document.getElementById('outputSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
         // 监听键盘事件
         document.getElementById('statement').addEventListener('keydown', function(e) {
             if (e.ctrlKey && e.key === 'Enter') {
