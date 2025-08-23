@@ -32,6 +32,10 @@ class DirectLeanExploreClient:
         if not self.api_key:
             raise ValueError("LeanExplore API key 未找到。请在配置文件、环境变量或参数中提供。")
         
+        # 配置选项：是否截断长代码（默认不截断）
+        self.truncate_output = self.config.get('lean_explore', {}).get('truncate_output', False)
+        self.max_output_length = self.config.get('lean_explore', {}).get('max_output_length', 10000)
+        
         # 初始化客户端
         self.client = LeanExploreAPIClient(api_key=self.api_key)
     
@@ -67,15 +71,30 @@ class DirectLeanExploreClient:
                 if i >= limit:
                     break
                 
+                # 确保完整输出，不截断长代码
+                statement_text = item.statement_text or item.display_statement_text or ''
+                docstring_text = item.docstring or ''
+                description_text = item.informal_description or docstring_text or 'No description'
+                
+                # 如果配置了截断，才进行截断处理
+                if self.truncate_output:
+                    if len(statement_text) > self.max_output_length:
+                        statement_text = statement_text[:self.max_output_length] + "... [输出被截断]"
+                    if len(description_text) > self.max_output_length:
+                        description_text = description_text[:self.max_output_length] + "... [输出被截断]"
+                    if len(docstring_text) > self.max_output_length:
+                        docstring_text = docstring_text[:self.max_output_length] + "... [输出被截断]"
+                
                 result = {
                     'id': item.id,
                     'title': item.primary_declaration.lean_name if item.primary_declaration else 'N/A',
                     'type': 'theorem',  # 默认类型
-                    'description': item.informal_description or item.docstring or 'No description',
-                    'statement': item.statement_text or item.display_statement_text or '',
+                    'description': description_text,
+                    'statement': statement_text,
                     'source_file': item.source_file,
                     'line': item.range_start_line,
-                    'docstring': item.docstring
+                    'docstring': docstring_text,
+                    'full_content': True  # 标记这是完整内容，未被截断
                 }
                 results.append(result)
             
@@ -99,14 +118,29 @@ class DirectLeanExploreClient:
             if not item:
                 return None
             
+            # 确保完整输出，不截断长代码
+            statement_text = item.statement_text or item.display_statement_text or ''
+            docstring_text = item.docstring or ''
+            description_text = item.informal_description or ''
+            
+            # 如果配置了截断，才进行截断处理
+            if self.truncate_output:
+                if len(statement_text) > self.max_output_length:
+                    statement_text = statement_text[:self.max_output_length] + "... [输出被截断]"
+                if len(docstring_text) > self.max_output_length:
+                    docstring_text = docstring_text[:self.max_output_length] + "... [输出被截断]"
+                if len(description_text) > self.max_output_length:
+                    description_text = description_text[:self.max_output_length] + "... [输出被截断]"
+            
             return {
                 'id': item.id,
                 'name': item.primary_declaration.lean_name if item.primary_declaration else 'N/A',
-                'statement': item.statement_text or item.display_statement_text or '',
-                'docstring': item.docstring,
-                'informal_description': item.informal_description,
+                'statement': statement_text,
+                'docstring': docstring_text,
+                'informal_description': description_text,
                 'source_file': item.source_file,
-                'line': item.range_start_line
+                'line': item.range_start_line,
+                'full_content': True  # 标记这是完整内容，未被截断
             }
             
         except Exception as e:

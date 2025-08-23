@@ -22,6 +22,11 @@ class MCPLeanExploreClient:
         self.config = self._load_config(config_path)
         self.session: Optional[ClientSession] = None
         self.server_params = None
+        
+        # 配置选项：是否截断长代码（默认不截断）
+        self.truncate_output = self.config.get('lean_explore', {}).get('truncate_output', False)
+        self.max_output_length = self.config.get('lean_explore', {}).get('max_output_length', 10000)
+        
         self._setup_server_params()
     
     def _load_config(self, config_path: str) -> Dict[str, Any]:
@@ -131,13 +136,23 @@ class MCPLeanExploreClient:
                 }
             )
             
-            # 解析结果
+            # 解析结果并确保完整输出
             if result.content and len(result.content) > 0:
                 content = result.content[0]
                 if hasattr(content, 'text'):
-                    return json.loads(content.text)
+                    search_results = json.loads(content.text)
+                    # 对每个结果处理完整输出
+                    processed_results = []
+                    for item in search_results:
+                        processed_item = self._ensure_full_output(item)
+                        processed_results.append(processed_item)
+                    return processed_results
                 elif hasattr(content, 'data'):
-                    return content.data
+                    data_results = content.data
+                    if isinstance(data_results, list):
+                        return [self._ensure_full_output(item) for item in data_results]
+                    else:
+                        return self._ensure_full_output(data_results)
             
             return []
             
@@ -167,9 +182,10 @@ class MCPLeanExploreClient:
             if result.content and len(result.content) > 0:
                 content = result.content[0]
                 if hasattr(content, 'text'):
-                    return json.loads(content.text)
+                    theorem_data = json.loads(content.text)
+                    return self._ensure_full_output(theorem_data)
                 elif hasattr(content, 'data'):
-                    return content.data
+                    return self._ensure_full_output(content.data)
             
             return {}
             
@@ -203,9 +219,18 @@ class MCPLeanExploreClient:
             if result.content and len(result.content) > 0:
                 content = result.content[0]
                 if hasattr(content, 'text'):
-                    return json.loads(content.text)
+                    category_results = json.loads(content.text)
+                    # 对每个结果处理完整输出
+                    if isinstance(category_results, list):
+                        return [self._ensure_full_output(item) for item in category_results]
+                    else:
+                        return self._ensure_full_output(category_results)
                 elif hasattr(content, 'data'):
-                    return content.data
+                    data_results = content.data
+                    if isinstance(data_results, list):
+                        return [self._ensure_full_output(item) for item in data_results]
+                    else:
+                        return self._ensure_full_output(data_results)
             
             return []
             
@@ -250,6 +275,44 @@ class MCPLeanExploreClient:
         except Exception as e:
             logger.error(f"获取服务器信息失败: {e}")
             raise RuntimeError(f"获取服务器信息失败: {e}")
+    
+    def _ensure_full_output(self, item: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        确保输出完整的Lean代码，不进行截断
+        
+        Args:
+            item: 需要处理的数据项
+        
+        Returns:
+            处理后的数据项
+        """
+        if not isinstance(item, dict):
+            return item
+        
+        # 复制项以避免修改原始数据
+        processed_item = item.copy()
+        
+        # 对关键字段进行完整输出处理
+        text_fields = ['statement', 'docstring', 'description', 'informal_description', 
+                      'statement_text', 'display_statement_text', 'code', 'content']
+        
+        for field in text_fields:
+            if field in processed_item and isinstance(processed_item[field], str):
+                original_text = processed_item[field]
+                
+                # 如果配置了截断，才进行截断处理
+                if self.truncate_output and len(original_text) > self.max_output_length:
+                    processed_item[field] = original_text[:self.max_output_length] + "... [输出被截断]"
+                    processed_item[f'{field}_truncated'] = True
+                else:
+                    # 保持完整输出
+                    processed_item[field] = original_text
+                    processed_item[f'{field}_truncated'] = False
+        
+        # 添加标记表示这是完整内容
+        processed_item['full_content'] = not self.truncate_output
+        
+        return processed_item
 
 
 class SyncMCPLeanExploreClient:
@@ -261,6 +324,10 @@ class SyncMCPLeanExploreClient:
     def __init__(self, config_path: str = "config/config.yaml"):
         self.async_client = MCPLeanExploreClient(config_path)
         self.loop = None
+        
+        # 继承配置选项
+        self.truncate_output = self.async_client.truncate_output
+        self.max_output_length = self.async_client.max_output_length
     
     def _run_async(self, coro):
         """运行异步协程"""

@@ -59,9 +59,52 @@ class StreamingProofProcessor:
             # 1. 开始生成证明
             yield self._format_sse_message("开始生成Lean4证明代码...", "status")
             
-            # 2. 使用完整的系统提示词
+            # 2. 先搜索lean-explore相关知识
+            search_context = ""
+            if lean_explore_available:
+                try:
+                    yield self._format_sse_message("🔍 正在搜索相关的数学知识...", "status")
+                    
+                    import asyncio
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    
+                    search_results = loop.run_until_complete(
+                        lean_explore.search(proof_statement, limit=3)
+                    )
+                    
+                    if search_results:
+                        knowledge_content = "## 📚 相关数学知识\n\n"
+                        knowledge_content += "在LeanExplore中找到相关定理和知识：\n\n"
+                        
+                        # 只显示第一个结果的完整信息
+                        if len(search_results) > 0:
+                            result = search_results[0]
+                            knowledge_content += f"### {result['title']}\n"
+                            knowledge_content += f"**文件位置**: `{result['source_file']}:{result['line']}`\n\n"
+                            if result.get('statement'):
+                                knowledge_content += f"**Lean代码**:\n```lean\n{result['statement']}\n```\n\n"
+                            if result.get('description'):
+                                knowledge_content += f"**说明**: {result['description']}\n\n"
+                        
+                        # 输出搜索结果供用户查看
+                        yield self._format_sse_message(knowledge_content, "knowledge_chunk")
+                        
+                        # 为LLM准备上下文信息
+                        search_context = f"\n\n相关数学知识和定理：\n{knowledge_content}"
+                    
+                    loop.close()
+                    
+                except Exception as e:
+                    print(f"LeanExplore搜索失败: {e}")
+                    yield self._format_sse_message(f"🔍 知识搜索遇到问题，继续生成证明...", "status")
+            
+            # 3. 使用完整的系统提示词并结合搜索结果
             system_prompt = self._load_prompt("prompts/system_prompt.txt")
             prompt = system_prompt.format(proof_statement=proof_statement)
+            
+            # 将搜索结果添加到用户提示中
+            enhanced_prompt = prompt + search_context
             
             # # 添加调试信息
             # print(f"Using model: {self.model}")
@@ -75,7 +118,7 @@ class StreamingProofProcessor:
                 model=self.model,
                 messages=[
                     {"role": "system", "content": "你是一名精通 Lean 4 与 mathlib 的数学家/形式化工程师。"},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": enhanced_prompt}
                 ],
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
@@ -258,47 +301,7 @@ def prove_in_session(session_id):
         def generate_and_save():
             nonlocal full_proof
             
-            # 首先搜索相关的数学知识
-            if lean_explore_available:
-                try:
-                    yield processor._format_sse_message("🔍 正在搜索相关的数学知识...", "status")
-                    
-                    import asyncio
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    
-                    search_results = loop.run_until_complete(
-                        lean_explore.search(statement, limit=3)
-                    )
-                    
-                    if search_results:
-                        knowledge_content = "## 📚 相关数学知识\n\n"
-                        knowledge_content += "在LeanExplore中找到相关定理和知识：\n\n"
-                        
-                        # 只处理第一个搜索结果
-                        if len(search_results) > 0:
-                            result = search_results[0]
-                            knowledge_content += f"### {result['title']}\n"
-                            knowledge_content += f"**文件位置**: `{result['source_file']}:{result['line']}`\n\n"
-                            if result.get('statement'):
-                                knowledge_content += f"**Lean代码**:\n```lean\n{result['statement']}...\n```\n\n"
-                            if result.get('description'):
-                                knowledge_content += f"**说明**: {result['description']}...\n\n"
-                        
-                        yield processor._format_sse_message(knowledge_content, "knowledge_chunk")
-                        
-                        # 将搜索结果添加到完整证明中
-                        full_proof += processor._format_sse_message(knowledge_content, "knowledge_chunk")
-                    
-                    loop.close()
-                    
-                except Exception as e:
-                    print(f"LeanExplore搜索失败: {e}")
-                    yield processor._format_sse_message(f"🔍 知识搜索遇到问题，继续生成证明...", "status")
-            
-            # 然后生成AI证明
-            yield processor._format_sse_message("🤖 开始生成AI证明...", "status")
-            
+            # 直接调用stream_proof_generation，它现在已经包含了搜索功能
             for chunk in processor.stream_proof_generation(statement):
                 full_proof += chunk
                 yield chunk
