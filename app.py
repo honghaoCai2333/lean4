@@ -11,6 +11,7 @@ from proof_assistant import ProofProcessor
 from proof_assistant.llm_client import LLMClient
 from proof_assistant.lean_executor import LeanExecutor
 from database import ProofDatabase
+from lean_explore_direct_client import DirectLeanExploreClient
 
 app = Flask(__name__)
 CORS(app)
@@ -134,9 +135,16 @@ class StreamingProofProcessor:
         }
         return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
-# 初始化处理器和数据库
+# 初始化处理器、数据库和LeanExplore客户端
 processor = StreamingProofProcessor()
 db = ProofDatabase()
+try:
+    lean_explore = DirectLeanExploreClient()
+    lean_explore_available = True
+except Exception as e:
+    print(f"LeanExplore客户端初始化失败: {e}")
+    lean_explore = None
+    lean_explore_available = False
 
 @app.route('/api/prove', methods=['POST'])
 def prove():
@@ -249,6 +257,47 @@ def prove_in_session(session_id):
         
         def generate_and_save():
             nonlocal full_proof
+            
+            # 首先搜索相关的数学知识
+            if lean_explore_available:
+                try:
+                    yield processor._format_sse_message("🔍 正在搜索相关的数学知识...", "status")
+                    
+                    import asyncio
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    
+                    search_results = loop.run_until_complete(
+                        lean_explore.search(statement, limit=3)
+                    )
+                    
+                    if search_results:
+                        knowledge_content = "## 📚 相关数学知识\n\n"
+                        knowledge_content += "在LeanExplore中找到以下相关定理和知识：\n\n"
+                        
+                        for i, result in enumerate(search_results, 1):
+                            knowledge_content += f"### {i}. {result['title']}\n"
+                            knowledge_content += f"**文件位置**: `{result['source_file']}:{result['line']}`\n\n"
+                            if result.get('statement'):
+                                knowledge_content += f"**Lean代码**:\n```lean\n{result['statement'][:300]}...\n```\n\n"
+                            if result.get('description'):
+                                knowledge_content += f"**说明**: {result['description'][:200]}...\n\n"
+                            knowledge_content += "---\n\n"
+                        
+                        yield processor._format_sse_message(knowledge_content, "knowledge_chunk")
+                        
+                        # 将搜索结果添加到完整证明中
+                        full_proof += processor._format_sse_message(knowledge_content, "knowledge_chunk")
+                    
+                    loop.close()
+                    
+                except Exception as e:
+                    print(f"LeanExplore搜索失败: {e}")
+                    yield processor._format_sse_message(f"🔍 知识搜索遇到问题，继续生成证明...", "status")
+            
+            # 然后生成AI证明
+            yield processor._format_sse_message("🤖 开始生成AI证明...", "status")
+            
             for chunk in processor.stream_proof_generation(statement):
                 full_proof += chunk
                 yield chunk
@@ -265,6 +314,68 @@ def prove_in_session(session_id):
                 'X-Accel-Buffering': 'no'
             }
         )
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/search', methods=['POST'])
+def search_lean_explore():
+    """LeanExplore搜索接口"""
+    try:
+        data = request.json
+        query = data.get('query')
+        limit = data.get('limit', 5)
+        
+        if not query:
+            return jsonify({"error": "请提供搜索查询"}), 400
+        
+        if not lean_explore_available:
+            return jsonify({"error": "LeanExplore服务不可用"}), 503
+        
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            results = loop.run_until_complete(
+                lean_explore.search(query, limit=limit)
+            )
+            
+            return jsonify({
+                "query": query,
+                "results": results,
+                "count": len(results)
+            })
+            
+        finally:
+            loop.close()
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/search/<int:theorem_id>', methods=['GET'])
+def get_theorem_details(theorem_id):
+    """获取定理详细信息"""
+    try:
+        if not lean_explore_available:
+            return jsonify({"error": "LeanExplore服务不可用"}), 503
+        
+        import asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            details = loop.run_until_complete(
+                lean_explore.get_by_id(theorem_id)
+            )
+            
+            if not details:
+                return jsonify({"error": "定理不存在"}), 404
+                
+            return jsonify({"theorem": details})
+            
+        finally:
+            loop.close()
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
