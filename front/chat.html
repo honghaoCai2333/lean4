@@ -334,6 +334,16 @@
             padding-bottom: 8px;
         }
 
+        /* 特殊样式：LeanExplore知识标题 */
+        .markdown-body h2.knowledge-title {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%) !important;
+            border: 2px solid #0ea5e9 !important;
+            border-radius: 8px !important;
+            padding: 12px 16px !important;
+            color: #0c4a6e !important;
+            margin-top: 24px !important;
+        }
+
         .markdown-body p, .markdown-body li {
             font-weight: normal;
         }
@@ -540,6 +550,80 @@
         
         .symbol-check-item.error {
             color: #dc2626;
+        }
+
+        /* LeanExplore知识总结样式 */
+        .knowledge-summary {
+            margin-top: 32px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border: 2px solid #0ea5e9;
+            border-radius: 12px;
+            position: relative;
+        }
+
+        .knowledge-summary::before {
+            content: "📚";
+            position: absolute;
+            top: -12px;
+            left: 20px;
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .knowledge-summary-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #0c4a6e;
+            margin-bottom: 16px;
+            text-align: center;
+            border-bottom: 2px solid #0ea5e9;
+            padding-bottom: 8px;
+        }
+
+        .knowledge-item {
+            background: white;
+            margin: 12px 0;
+            padding: 16px;
+            border-radius: 8px;
+            border-left: 4px solid #0ea5e9;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .knowledge-item-title {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .knowledge-item-meta {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+
+        .knowledge-item-description {
+            color: #374151;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .knowledge-item-statement {
+            background: #f8fafc;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 14px;
+            color: #1e293b;
+            border: 1px solid #e2e8f0;
         }
 
         /* 响应式设计 */
@@ -823,7 +907,9 @@
             messageDiv.className = `message ${role}`;
             
             const avatar = role === 'user' ? '你' : 'AI';
-            const processedContent = isMarkdownMode ? marked.parse(preprocessContent(content)) : escapeHtml(content);
+            // 修复代码块后再处理内容
+            const fixedContent = role === 'assistant' ? fixUnmatchedCodeBlocks(content) : content;
+            const processedContent = isMarkdownMode ? marked.parse(preprocessContent(fixedContent)) : escapeHtml(fixedContent);
             
             messageDiv.innerHTML = `
                 <div class="message-avatar">${avatar}</div>
@@ -930,6 +1016,7 @@
                 const decoder = new TextDecoder();
                 let buffer = '';
                 let fullContent = '';
+                let knowledgeContent = ''; // 存储knowledge_chunk内容
                 
                 while (true) {
                     const { done, value } = await reader.read();
@@ -943,14 +1030,24 @@
                         if (line.startsWith('data: ')) {
                             try {
                                 const data = JSON.parse(line.slice(6));
-                                if (data.type === 'proof_chunk' || data.type === 'explanation_chunk' || data.type === 'refined_chunk' || data.type === 'knowledge_chunk') {
+                                if (data.type === 'proof_chunk' || data.type === 'explanation_chunk' || data.type === 'refined_chunk') {
                                     fullContent += data.content;
-                                    // 处理转义字符并更新显示
+                                    // 处理转义字符并更新显示（不包含knowledge_chunk）
                                     const cleanContent = fullContent.replace(/\\n/g, '\n').replace(/\\\\/g, '\\');
-                                    const processedContent = isMarkdownMode ? marked.parse(preprocessContent(cleanContent)) : escapeHtml(cleanContent);
+                                    let displayContent = cleanContent;
+                                    
+                                    // 如果有knowledge内容，添加到最前面
+                                    if (knowledgeContent) {
+                                        // knowledge内容已经在接收时处理过转义字符，直接拼接
+                                        displayContent = knowledgeContent + '\n\n' + displayContent;
+                                    }
+                                    
+                                    // 在处理之前先修复代码块
+                                    displayContent = fixUnmatchedCodeBlocks(displayContent);
+                                    const processedContent = isMarkdownMode ? marked.parse(preprocessContent(displayContent)) : escapeHtml(displayContent);
                                     streamingContent.innerHTML = processedContent;
                                     
-                                    // 应用代码高亮
+                                    // 应用代码高亮和特殊样式
                                     if (isMarkdownMode) {
                                         streamingContent.querySelectorAll('pre code').forEach((block) => {
                                             if (block.textContent.includes('theorem ') || 
@@ -961,6 +1058,13 @@
                                             }
                                             hljs.highlightElement(block);
                                         });
+
+                                        // 为包含📚的h2标题添加特殊样式
+                                        streamingContent.querySelectorAll('h2').forEach((h2) => {
+                                            if (h2.textContent.includes('📚')) {
+                                                h2.classList.add('knowledge-title');
+                                            }
+                                        });
                                         
                                         if (window.MathJax && window.MathJax.typesetPromise) {
                                             window.MathJax.typesetPromise([streamingContent]).catch((err) => console.log(err));
@@ -969,6 +1073,10 @@
                                     
                                     const chatMessages = document.getElementById('chatMessages');
                                     chatMessages.scrollTop = chatMessages.scrollHeight;
+                                } else if (data.type === 'knowledge_chunk') {
+                                    // 单独收集knowledge内容，不立即显示，并进行转义字符处理
+                                    const cleanKnowledgeContent = data.content.replace(/\\n/g, '\n').replace(/\\\\/g, '\\');
+                                    knowledgeContent += cleanKnowledgeContent;
                                 } else if (data.type === 'proof_start') {
                                     // 只显示开始信息，不显示其他状态
                                 }
@@ -977,6 +1085,44 @@
                             }
                         }
                     }
+                }
+                
+                // 流式结束后，最终更新显示内容，确保knowledge内容在最前面
+                if (knowledgeContent && fullContent) {
+                    const cleanContent = fullContent.replace(/\\n/g, '\n').replace(/\\\\/g, '\\');
+                    // knowledge内容已经在接收时处理过转义字符，直接拼接
+                    let finalContent = knowledgeContent + '\n\n' + cleanContent;
+                    // 在处理之前先修复代码块
+                    finalContent = fixUnmatchedCodeBlocks(finalContent);
+                    const processedContent = isMarkdownMode ? marked.parse(preprocessContent(finalContent)) : escapeHtml(finalContent);
+                    streamingContent.innerHTML = processedContent;
+                    
+                    // 重新应用代码高亮和数学公式
+                    if (isMarkdownMode) {
+                        streamingContent.querySelectorAll('pre code').forEach((block) => {
+                            if (block.textContent.includes('theorem ') || 
+                                block.textContent.includes('lemma ') || 
+                                block.textContent.includes('def ') ||
+                                block.textContent.includes('by ')) {
+                                block.className = 'language-lean';
+                            }
+                            hljs.highlightElement(block);
+                        });
+
+                        // 为包含📚的h2标题添加特殊样式
+                        streamingContent.querySelectorAll('h2').forEach((h2) => {
+                            if (h2.textContent.includes('📚')) {
+                                h2.classList.add('knowledge-title');
+                            }
+                        });
+                        
+                        if (window.MathJax && window.MathJax.typesetPromise) {
+                            window.MathJax.typesetPromise([streamingContent]).catch((err) => console.log(err));
+                        }
+                    }
+                    
+                    const chatMessages = document.getElementById('chatMessages');
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
                 }
                 
             } catch (error) {
@@ -1175,6 +1321,65 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
+        // 修复不匹配的代码块标记
+        function fixUnmatchedCodeBlocks(content) {
+            const lines = content.split('\n');
+            const result = [];
+            let inCodeBlock = false;
+            let codeBlockType = '';
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const trimmedLine = line.trim();
+                
+                // 检查代码块开始
+                if (trimmedLine.startsWith('```')) {
+                    if (!inCodeBlock) {
+                        // 开始新的代码块
+                        inCodeBlock = true;
+                        codeBlockType = trimmedLine.substring(3).trim();
+                        result.push(line);
+                    } else {
+                        // 结束当前代码块
+                        inCodeBlock = false;
+                        codeBlockType = '';
+                        result.push(line);
+                    }
+                } else if (inCodeBlock) {
+                    // 在代码块内部，检查是否遇到明显的非代码内容
+                    const isTitle = (
+                        trimmedLine.startsWith('##') ||
+                        trimmedLine.startsWith('# ') ||
+                        trimmedLine.includes('📚') ||
+                        trimmedLine.includes('在LeanExplore中找到') ||
+                        trimmedLine.includes('相关数学知识') ||
+                        trimmedLine.includes('相关定理和知识') ||
+                        /^\d+\.\s*(问题理解|证明思路|数学解释|执行.*验证摘要)/.test(trimmedLine)
+                    );
+                    
+                    if (isTitle) {
+                        // 自动结束上一个代码块
+                        result.push('```');
+                        inCodeBlock = false;
+                        codeBlockType = '';
+                        result.push(line);
+                    } else {
+                        result.push(line);
+                    }
+                } else {
+                    // 正常内容
+                    result.push(line);
+                }
+            }
+            
+            // 如果到最后还在代码块中，自动添加结束标记
+            if (inCodeBlock) {
+                result.push('```');
+            }
+            
+            return result.join('\n');
+        }
+
         // 预处理内容（Markdown和LaTeX）
         function preprocessContent(content) {
             // 保护已有的代码块和数学公式
@@ -1197,39 +1402,62 @@
                 return `${inlineMathMarker}${inlineMaths.length - 1}${inlineMathMarker}`;
             });
             
-            // 3. 保护已有的代码块
+            // 3. 修复不匹配的代码块标记
+            content = fixUnmatchedCodeBlocks(content);
+            
+            // 4. 保护已有的代码块
             content = content.replace(/```[\s\S]*?```/g, (match) => {
                 codeBlocks.push(match);
                 return `${codeBlockMarker}${codeBlocks.length - 1}${codeBlockMarker}`;
             });
             
-            // 4. 简化处理 - 强化换行，不转换标题
+            // 5. 保护已存在的markdown标题（防止被误处理）
+            const titleMarker = '___TITLE___';
+            const titles = [];
+            content = content.replace(/^#{1,6}\s+.+$/gm, (match) => {
+                titles.push(match);
+                return `${titleMarker}${titles.length - 1}${titleMarker}`;
+            });
             
-            // 移除多余的##符号，保持原有的数字标题格式
-            content = content.replace(/#{1,6}\s*(\d+\.\s*(问题理解|证明思路|数学解释|执行[\/]验证摘要))/g, '$1');
+            // 6. 简化处理 - 强化换行，保持markdown标题
             
-            // 强制在标题前添加换行，无论前面是什么内容
-            content = content.replace(/(.+)(\d+\.\s*(证明思路|数学解释|执行[\/]验证摘要))/g, '$1\n\n$2');
-            content = content.replace(/(.+)(1\.\s*问题理解)/g, '$1\n\n$2');
+            // 确保标题前有足够的换行，但保留markdown标题格式
+            content = content.replace(/([^\n])(\n*)(#{1,6}\s+)/g, (match, prev, newlines, hashes) => {
+                // 如果前面没有换行或只有一个换行，添加双换行
+                if (newlines.length < 2) {
+                    return prev + '\n\n' + hashes;
+                }
+                return match;
+            });
             
-            // 额外确保换行
-            content = content.replace(/([。！？])(\d+\.\s*(问题理解|证明思路|数学解释|执行[\/]验证摘要))/g, '$1\n\n$2');
-            content = content.replace(/([。！？])(\s*)(\d+\.\s*(问题理解|证明思路|数学解释|执行[\/]验证摘要))/g, '$1\n\n$3');
+            // 为数字标题添加markdown标题格式（如果没有的话）
+            content = content.replace(/^(?!##\s+)(\d+\.\s*(问题理解|证明思路|数学解释|执行[\/]验证摘要))/gm, '## $1');
+            
+            // 确保emoji标题格式正确，但不重复添加##
+            content = content.replace(/^(?!##\s+)(📚\s*(在LeanExplore中找到以下相关定理和知识|相关数学知识))/gm, '## $1');
+            
+            // 强制在其他标题前添加换行
+            content = content.replace(/([。！？])(\s*)(#{1,6}\s+)/g, '$1\n\n$3');
             
             // 清理多余的换行
             content = content.replace(/\n{3,}/g, '\n\n');
             content = content.replace(/^\n+/, '');
             
-            // 5. 处理LaTeX环境
+            // 7. 处理LaTeX环境
             content = content.replace(/\\begin\{([^}]+)\}([\s\S]*?)\\end\{\1\}/g, (match, env, body) => {
                 return `$$\\begin{${env}}${body}\\end{${env}}$$`;
             });
             
-            // 6. 暂时禁用自动Lean4代码识别，防止误判整个内容为代码
+            // 8. 暂时禁用自动Lean4代码识别，防止误判整个内容为代码
             // 依赖AI自己输出正确的markdown格式
             // TODO: 未来可以添加更精确的Lean4代码识别逻辑
             
-            // 7. 恢复保护的内容
+            // 9. 恢复保护的内容
+            // 首先恢复标题
+            content = content.replace(new RegExp(`${titleMarker}(\\d+)${titleMarker}`, 'g'), (match, index) => {
+                return titles[parseInt(index)];
+            });
+            
             content = content.replace(new RegExp(`${codeBlockMarker}(\\d+)${codeBlockMarker}`, 'g'), (match, index) => {
                 return codeBlocks[parseInt(index)];
             });
@@ -1508,6 +1736,7 @@ $$\\frac{\\sqrt{n}(\\overline{X}_n - \\mu)}{\\sigma} \\xrightarrow{d} N(0,1)$$
             div.textContent = text;
             return div.innerHTML;
         }
+
     </script>
 </body>
 </html>

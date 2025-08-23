@@ -273,16 +273,17 @@ def prove_in_session(session_id):
                     
                     if search_results:
                         knowledge_content = "## 📚 相关数学知识\n\n"
-                        knowledge_content += "在LeanExplore中找到以下相关定理和知识：\n\n"
+                        knowledge_content += "在LeanExplore中找到相关定理和知识：\n\n"
                         
-                        for i, result in enumerate(search_results, 1):
-                            knowledge_content += f"### {i}. {result['title']}\n"
+                        # 只处理第一个搜索结果
+                        if len(search_results) > 0:
+                            result = search_results[0]
+                            knowledge_content += f"### {result['title']}\n"
                             knowledge_content += f"**文件位置**: `{result['source_file']}:{result['line']}`\n\n"
                             if result.get('statement'):
-                                knowledge_content += f"**Lean代码**:\n```lean\n{result['statement'][:300]}...\n```\n\n"
+                                knowledge_content += f"**Lean代码**:\n```lean\n{result['statement']}...\n```\n\n"
                             if result.get('description'):
-                                knowledge_content += f"**说明**: {result['description'][:200]}...\n\n"
-                            knowledge_content += "---\n\n"
+                                knowledge_content += f"**说明**: {result['description']}...\n\n"
                         
                         yield processor._format_sse_message(knowledge_content, "knowledge_chunk")
                         
