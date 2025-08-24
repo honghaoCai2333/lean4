@@ -74,8 +74,8 @@ class StreamingProofProcessor:
                     )
                     
                     if search_results:
-                        knowledge_content = "## 📚 相关数学知识\n\n"
-                        knowledge_content += "在LeanExplore中找到相关定理和知识：\n\n"
+                        knowledge_content = "## 相关数学知识\n\n"
+                        knowledge_content += "Lean代码和相关Mathlib定理：\n\n"
                         
                         # 只显示第一个结果的完整信息
                         if len(search_results) > 0:
