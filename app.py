@@ -156,8 +156,26 @@ class StreamingProofProcessor:
                 if current_chunk:
                     yield self._format_sse_message(current_chunk, "proof_chunk")
                     time.sleep(0.3)
+                
+                yield self._format_sse_message("", "proof_end")
+                
+                # 添加 Lean 验证步骤
+                if self.lean_executor.check_lean_installation():
+                    yield self._format_sse_message("🔧 开始验证生成的 Lean 代码...", "status")
+                    
+                    # 提取并清理 Lean 代码
+                    lean_code = self._clean_lean_code(content)
+                    
+                    if lean_code.strip():
+                        # 进行流式验证
+                        verification_gen = self._verify_and_refine_proof_streaming(lean_code)
+                        for verification_message in verification_gen:
+                            yield verification_message
+                    else:
+                        yield self._format_sse_message("⚠️ 未能从生成的内容中提取有效的 Lean 代码", "warning")
+                else:
+                    yield self._format_sse_message("⚠️ Lean4 未安装，跳过代码验证", "warning")
             
-            yield self._format_sse_message("", "proof_end")
             yield self._format_sse_message("证明生成完成", "success")
             yield self._format_sse_message("", "complete")
             
@@ -170,6 +188,54 @@ class StreamingProofProcessor:
             yield self._format_sse_message(f"错误: {error_msg}", "error")
             yield self._format_sse_message("", "complete")
     
+    def _clean_lean_code(self, code: str) -> str:
+        """清理生成的Lean代码，移除markdown标记等"""
+        lines = code.strip().split('\n')
+        cleaned_lines = []
+        in_code_block = False
+        
+        for line in lines:
+            if line.strip().startswith('```'):
+                in_code_block = not in_code_block
+                continue
+            cleaned_lines.append(line)
+        
+        return '\n'.join(cleaned_lines).strip()
+    
+    def _verify_and_refine_proof_streaming(self, lean_code: str) -> Generator:
+        """流式验证并改进证明"""
+        max_attempts = self.config.get('lean', {}).get('max_attempts', 3)
+        current_code = lean_code
+        
+        for attempt in range(max_attempts):
+            yield self._format_sse_message(f"🔍 验证尝试 {attempt + 1}/{max_attempts}...", "status")
+            
+            # 验证当前代码
+            is_valid, message = self.lean_executor.verify_proof(current_code)
+            
+            if is_valid:
+                yield self._format_sse_message("✅ 证明验证成功!", "verification_success")
+                if attempt > 0:
+                    yield self._format_sse_message("**最终修正后的代码:**", "status")
+                    yield self._format_sse_message(f"```lean\n{current_code}\n```", "refined_code")
+                return True
+            else:
+                yield self._format_sse_message(f"❌ 验证失败: {message}", "verification_error")
+                
+                # 如果不是最后一次尝试，则尝试修正
+                if attempt < max_attempts - 1:
+                    yield self._format_sse_message("🔧 正在尝试修正错误...", "status")
+                    try:
+                        # 这里需要添加LLM修正功能，目前先跳过
+                        yield self._format_sse_message("修正功能待实现，跳过自动修正", "status")
+                        break
+                    except Exception as e:
+                        yield self._format_sse_message(f"修正过程中出错: {str(e)}", "error")
+                        break
+        
+        yield self._format_sse_message(f"❌ 经过{max_attempts}次尝试后仍无法验证证明", "verification_failed")
+        return False
+
     def _format_sse_message(self, content: str, message_type: str) -> str:
         """格式化SSE消息"""
         data = {
